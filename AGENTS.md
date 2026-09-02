@@ -1,0 +1,4 @@
+- Use pascal case to name folders and files
+- When writing React, render 
+- Prefer simpler, extendible solutions over novel ones
+- Avoid inline functions when writing react. `onClick={() => void refresh()}` is an anti-pattern. Generally, you should wrap funcitons in useCallback and values in useMemo when you can.
