@@ -1,21 +1,35 @@
-import type { GitHubRepositoryChoice } from "@review/contracts";
-import { useMemo, useState } from "react";
+import type {
+  GitHubRepositoryChoice,
+  PullRequestStatus,
+  ReviewPreferences,
+} from "@review/contracts";
+import { useEffect, useMemo, useState } from "react";
 
 import { PullRequestGroup } from "../../components/pull-requests/pull-request-group";
 import { Button } from "../../components/ui/button";
-import { CheckboxIndicator } from "../../components/ui/Checkbox";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-} from "../../components/ui/Combobox";
+import { ComboboxMultiSelect } from "../../components/ui/Combobox";
 import { readPreferences, savePreferences } from "../setup/setup-persistence";
 import { useRepositories } from "../setup/use-repositories";
 import { usePullRequests } from "./use-pull-requests";
+
+type StatusChoice = {
+  label: string;
+  value: PullRequestStatus;
+};
+
+const statusChoices: StatusChoice[] = [
+  { label: "Draft", value: "draft" },
+  { label: "Open", value: "open" },
+  { label: "In review", value: "inReview" },
+  { label: "Approved", value: "approved" },
+  { label: "Merged", value: "merged" },
+  { label: "Closed", value: "closed" },
+];
+
+const defaultStatusChoices = statusChoices.filter(
+  (status) => status.value === "draft" || status.value === "open",
+);
+const emptyRepositories: string[] = [];
 
 function PullRequestListSkeleton() {
   return (
@@ -36,23 +50,78 @@ function PullRequestListSkeleton() {
 }
 
 export function PullRequestsPage() {
-  const initialRepositories = useMemo(() => readPreferences()?.repositories ?? [], []);
-  const [repositories, setRepositories] = useState(initialRepositories);
+  const [preferences, setPreferences] = useState<ReviewPreferences | null>(null);
+  const [preferenceError, setPreferenceError] = useState(false);
+  const repositories = preferences?.repositories ?? emptyRepositories;
+  const selectedStatuses = useMemo(() => {
+    if (!preferences) {
+      return defaultStatusChoices;
+    }
+    return statusChoices.filter((status) =>
+      preferences.pullRequestStatuses.includes(status.value));
+  }, [preferences]);
   const repositorySetup = useRepositories(true);
   const selectedRepositoryValues = useMemo(() => new Set(repositories), [repositories]);
   const selectedRepositories = useMemo(
     () => repositorySetup.choices.filter((repository) => selectedRepositoryValues.has(repository.value)),
     [repositorySetup.choices, selectedRepositoryValues],
   );
-  const { groups, loading, refresh } = usePullRequests(repositories);
-  const pullRequestCount = groups.reduce((count, group) => count + group.pullRequests.length, 0);
+  const { groups: repositoryGroups, loading, refresh } = usePullRequests(repositories);
+  const pullRequests = useMemo(
+    () => repositoryGroups.flatMap((group) => group.state === "ready" ? group.pullRequests : []),
+    [repositoryGroups],
+  );
+  const selectedStatusValues = useMemo(
+    () => new Set(selectedStatuses.map((status) => status.value)),
+    [selectedStatuses],
+  );
+  const statusGroups = useMemo(
+    () => statusChoices
+      .filter((status) => selectedStatusValues.has(status.value))
+      .map((status) => ({
+        ...status,
+        pullRequests: pullRequests
+          .filter((pullRequest) => pullRequest.status === status.value)
+          .toSorted((first, second) => Date.parse(second.updatedAt) - Date.parse(first.updatedAt)),
+      }))
+      .filter((group) => group.pullRequests.length > 0),
+    [pullRequests, selectedStatusValues],
+  );
+  const unavailableRepositoryCount = repositoryGroups.filter((group) => group.state === "unavailable").length;
   const repositorySelectionLabel = `${repositories.length} ${repositories.length === 1 ? "repo" : "repos"} selected`;
+  const statusSelectionLabel = `${selectedStatuses.length} ${selectedStatuses.length === 1 ? "status" : "statuses"} selected`;
+
+  useEffect(() => {
+    void readPreferences()
+      .then(setPreferences)
+      .catch(() => setPreferenceError(true));
+  }, []);
+
+  const updatePreferences = (nextPreferences: ReviewPreferences) => {
+    setPreferences(nextPreferences);
+    setPreferenceError(false);
+    void savePreferences(nextPreferences).catch(() => setPreferenceError(true));
+  };
 
   const selectRepositories = (selected: GitHubRepositoryChoice[]) => {
+    if (!preferences) {
+      return;
+    }
     const values = selected.map((repository) => repository.value);
-    setRepositories(values);
-    savePreferences({ repositories: values });
+    updatePreferences({ ...preferences, repositories: values });
   };
+
+  const selectStatuses = (selected: StatusChoice[]) => {
+    if (!preferences) {
+      return;
+    }
+    updatePreferences({
+      ...preferences,
+      pullRequestStatuses: selected.map((status) => status.value),
+    });
+  };
+
+  const pageLoading = preferences === null || loading;
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
@@ -60,59 +129,84 @@ export function PullRequestsPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-[-0.01em]">Pull requests</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            {loading ? "Loading your repositories" : `${pullRequestCount} open across ${repositories.length} repositories`}
+            {pageLoading
+              ? "Loading pull requests"
+              : `${pullRequests.length} pull requests across ${repositories.length} repositor${repositories.length > 1 ? "ies" : "y"}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Combobox
-            autoHighlight
-            isItemEqualToValue={(repository, value) => repository.value === value.value}
-            itemToStringLabel={(repository) => repository.label}
-            itemToStringValue={(repository) => repository.value}
+          <ComboboxMultiSelect
+            disabled={repositorySetup.loading || repositorySetup.error}
+            emptyMessage="No repositories found."
+            getItemLabel={(repository) => repository.label}
+            getItemValue={(repository) => repository.value}
             items={repositorySetup.choices}
-            multiple
             onValueChange={selectRepositories}
-            value={selectedRepositories}
-          >
-            <ComboboxTrigger
-              aria-label={`Filter pull requests by repository. ${repositorySelectionLabel}.`}
-              disabled={repositorySetup.loading || repositorySetup.error}
-              variant="toolbar"
-            >
-              {repositorySelectionLabel}
-            </ComboboxTrigger>
-            <ComboboxContent>
-              <ComboboxInput aria-label="Search repositories" placeholder="Search repositories" />
-              <ComboboxEmpty>No repositories found.</ComboboxEmpty>
-              <ComboboxList>
-                {(repository: GitHubRepositoryChoice) => (
-                  <ComboboxItem key={repository.value} value={repository}>
-                    <CheckboxIndicator checked={selectedRepositoryValues.has(repository.value)} />
-                    <span className="min-w-0 flex-1 truncate">{repository.label}</span>
-                    {repository.isPrivate && (
-                      <span className="text-xs text-text-secondary">Private</span>
-                    )}
-                  </ComboboxItem>
+            renderItem={(repository) => (
+              <>
+                <span className="min-w-0 flex-1 truncate">{repository.label}</span>
+                {repository.isPrivate && (
+                  <span className="text-xs text-text-secondary">Private</span>
                 )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
+              </>
+            )}
+            searchLabel="Search repositories"
+            triggerAriaLabel={`Filter pull requests by repository. ${repositorySelectionLabel}.`}
+            triggerLabel={repositorySelectionLabel}
+            value={selectedRepositories}
+          />
+          <ComboboxMultiSelect
+            contentWidth="sm"
+            emptyMessage="No statuses found."
+            getItemLabel={(status) => status.label}
+            getItemValue={(status) => status.value}
+            items={statusChoices}
+            onValueChange={selectStatuses}
+            searchLabel="Search statuses"
+            triggerAriaLabel={`Filter pull requests by status. ${statusSelectionLabel}.`}
+            triggerLabel={statusSelectionLabel}
+            value={selectedStatuses}
+          />
           <Button
             size="sm"
             variant="outline"
-            disabled={loading}
+            disabled={pageLoading}
             onClick={() => void refresh()}
           >
             Refresh
           </Button>
         </div>
       </header>
-      {loading ? (
+      {pageLoading ? (
         <PullRequestListSkeleton />
       ) : (
-        <div className="grid gap-4">
-          {groups.map((group) => <PullRequestGroup group={group} key={group.repository} />)}
-        </div>
+        <>
+          {preferenceError && (
+            <p className="mb-4 text-sm text-text-secondary" role="status">
+              Unable to save your preferences.
+            </p>
+          )}
+          {unavailableRepositoryCount > 0 && (
+            <p className="mb-4 text-sm text-text-secondary" role="status">
+              Unable to load {unavailableRepositoryCount} {unavailableRepositoryCount === 1 ? "repository" : "repositories"}.
+            </p>
+          )}
+          {statusGroups.length > 0 ? (
+            <div className="grid gap-4">
+              {statusGroups.map((group) => (
+                <PullRequestGroup
+                  key={group.value}
+                  label={group.label}
+                  pullRequests={group.pullRequests}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-border bg-surface px-5 py-8 text-center text-sm text-text-secondary">
+              No pull requests match the selected statuses.
+            </p>
+          )}
+        </>
       )}
     </main>
   );

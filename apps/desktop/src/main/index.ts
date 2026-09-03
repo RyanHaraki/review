@@ -10,7 +10,9 @@ import type {
   PullRequestCacheRead,
   PullRequestGroup,
   PullRequestReviewState,
+  PullRequestStatus,
   PullRequestSummary,
+  ReviewPreferences,
   SetupStatus,
 } from "@review/contracts";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
@@ -33,6 +35,7 @@ const githubPullRequestSchema = z.object({
   isDraft: z.boolean(),
   number: z.number().int().positive(),
   reviewDecision: z.string(),
+  state: z.enum(["OPEN", "CLOSED", "MERGED"]),
   title: z.string(),
   updatedAt: z.string(),
   url: z.string().url(),
@@ -52,6 +55,29 @@ function normalizeReviewState(reviewDecision: string): PullRequestReviewState {
   return "none";
 }
 
+function normalizePullRequestStatus(
+  state: "OPEN" | "CLOSED" | "MERGED",
+  isDraft: boolean,
+  reviewDecision: string,
+): PullRequestStatus {
+  if (state === "MERGED") {
+    return "merged";
+  }
+  if (state === "CLOSED") {
+    return "closed";
+  }
+  if (isDraft) {
+    return "draft";
+  }
+  if (reviewDecision === "APPROVED") {
+    return "approved";
+  }
+  if (reviewDecision === "CHANGES_REQUESTED" || reviewDecision === "REVIEW_REQUIRED") {
+    return "inReview";
+  }
+  return "open";
+}
+
 async function readPullRequestsFromGitHub(repository: string): Promise<PullRequestGroup> {
   const result = await execFileAsync(
     "gh",
@@ -61,11 +87,11 @@ async function readPullRequestsFromGitHub(repository: string): Promise<PullReque
       "--repo",
       repository,
       "--state",
-      "open",
+      "all",
       "--limit",
       "100",
       "--json",
-      "number,title,author,updatedAt,additions,deletions,isDraft,url,headRefName,headRefOid,baseRefOid,fullDatabaseId,reviewDecision",
+      "number,title,author,updatedAt,additions,deletions,isDraft,url,headRefName,headRefOid,baseRefOid,fullDatabaseId,reviewDecision,state",
     ],
     { maxBuffer: 10_000_000 },
   );
@@ -90,6 +116,11 @@ async function readPullRequestsFromGitHub(repository: string): Promise<PullReque
       baseSha: pullRequest.baseRefOid,
       headSha: pullRequest.headRefOid,
       reviewState: normalizeReviewState(pullRequest.reviewDecision),
+      status: normalizePullRequestStatus(
+        pullRequest.state,
+        pullRequest.isDraft,
+        pullRequest.reviewDecision,
+      ),
     })),
   };
 }
@@ -120,6 +151,26 @@ async function writePullRequestCache(groups: PullRequestGroup[]): Promise<void> 
     });
   } catch {
     // The list can still use the GitHub result when the local cache is unavailable.
+  }
+}
+
+async function readPreferences(): Promise<ReviewPreferences> {
+  const response = await fetch(`${localServerOrigin}/preferences`);
+  if (!response.ok) {
+    throw new Error("Unable to read preferences.");
+  }
+  // SAFETY: The local server validates and creates this response from ReviewPreferences.
+  return await response.json() as ReviewPreferences;
+}
+
+async function savePreferences(preferences: ReviewPreferences): Promise<void> {
+  const response = await fetch(`${localServerOrigin}/preferences`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(preferences),
+  });
+  if (!response.ok) {
+    throw new Error("Unable to save preferences.");
   }
 }
 
@@ -290,6 +341,9 @@ async function readSetupStatus(): Promise<SetupStatus> {
 
 ipcMain.handle("setup:read", readSetupStatus);
 ipcMain.handle("setup:list-github-repositories", listGitHubRepositories);
+ipcMain.handle("preferences:read", readPreferences);
+ipcMain.handle("preferences:save", (_event, preferences: ReviewPreferences) =>
+  savePreferences(preferences));
 ipcMain.handle("setup:connect-codex", async () => {
   const login = await codexClient.startChatGptLogin();
   const authUrl = new URL(login.authUrl);

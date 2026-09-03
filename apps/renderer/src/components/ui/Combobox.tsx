@@ -1,5 +1,7 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
+
+import { CheckboxIndicator } from "./Checkbox";
 
 type ComboboxTriggerVariant = "default" | "toolbar";
 
@@ -58,7 +60,15 @@ type ComboboxContentProps = ComponentProps<typeof ComboboxPrimitive.Popup> &
   Pick<
     ComponentProps<typeof ComboboxPrimitive.Positioner>,
     "align" | "alignOffset" | "anchor" | "side" | "sideOffset"
-  >;
+  > & {
+    width?: "trigger" | "sm" | "md";
+  };
+
+const contentWidthClasses = {
+  trigger: "min-w-[var(--anchor-width)]",
+  sm: "w-[var(--anchor-width)] min-w-56",
+  md: "w-[var(--anchor-width)] min-w-72",
+} as const;
 
 export function ComboboxContent({
   align = "end",
@@ -67,6 +77,7 @@ export function ComboboxContent({
   className,
   side = "bottom",
   sideOffset = 6,
+  width = "md",
   ...props
 }: ComboboxContentProps) {
   return (
@@ -81,7 +92,8 @@ export function ComboboxContent({
       >
         <ComboboxPrimitive.Popup
           className={[
-            "w-[var(--anchor-width)] min-w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-strong bg-surface text-text shadow-[0_18px_48px_rgb(35_38_36_/_0.16)] outline-none [color-scheme:light]",
+            "max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-strong bg-surface text-text shadow-[0_18px_48px_rgb(35_38_36_/_0.16)] outline-none [color-scheme:light]",
+            contentWidthClasses[width],
             className,
           ]
             .filter(Boolean)
@@ -153,11 +165,83 @@ export function ComboboxEmpty({
 }: ComponentProps<typeof ComboboxPrimitive.Empty>) {
   return (
     <ComboboxPrimitive.Empty
-      className={["px-3 py-6 text-center text-sm text-text-secondary", className]
+      className={["empty:hidden px-3 py-6 text-center text-sm text-text-secondary", className]
         .filter(Boolean)
         .join(" ")}
       data-slot="combobox-empty"
       {...props}
     />
+  );
+}
+
+type ComboboxMultiSelectProps<Item> = {
+  contentWidth?: "trigger" | "sm" | "md";
+  disabled?: boolean;
+  emptyMessage: string;
+  getItemLabel(item: Item): string;
+  getItemValue(item: Item): string;
+  items: Item[];
+  onValueChange(value: Item[]): void;
+  renderItem?: (item: Item) => ReactNode;
+  searchLabel: string;
+  triggerAriaLabel?: string;
+  triggerLabel: string;
+  triggerVariant?: ComboboxTriggerVariant;
+  value: Item[];
+};
+
+export function ComboboxMultiSelect<Item>({
+  contentWidth = "md",
+  disabled = false,
+  emptyMessage,
+  getItemLabel,
+  getItemValue,
+  items,
+  onValueChange,
+  renderItem,
+  searchLabel,
+  triggerAriaLabel,
+  triggerLabel,
+  triggerVariant = "toolbar",
+  value,
+}: ComboboxMultiSelectProps<Item>) {
+  const selectedValues = new Set(value.map(getItemValue));
+
+  return (
+    <ComboboxPrimitive.Root
+      autoHighlight
+      isItemEqualToValue={(item, selectedItem) =>
+        getItemValue(item) === getItemValue(selectedItem)}
+      itemToStringLabel={getItemLabel}
+      itemToStringValue={getItemValue}
+      items={items}
+      multiple
+      onValueChange={onValueChange}
+      value={value}
+    >
+      <ComboboxTrigger
+        aria-label={triggerAriaLabel ?? triggerLabel}
+        disabled={disabled}
+        variant={triggerVariant}
+      >
+        {triggerLabel}
+      </ComboboxTrigger>
+      <ComboboxContent width={contentWidth}>
+        <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
+        <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
+        <ComboboxList>
+          {(item: Item) => (
+            <ComboboxItem key={getItemValue(item)} value={item}>
+              <CheckboxIndicator checked={selectedValues.has(getItemValue(item))} />
+              {renderItem ? (
+                renderItem(item)
+              ) : (
+                <span className="min-w-0 flex-1 truncate">{getItemLabel(item)}</span>
+              )}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </ComboboxPrimitive.Root>
   );
 }

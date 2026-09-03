@@ -3,16 +3,17 @@ import type { ComponentProps } from "react";
 
 const buttonVariantClasses = {
   default:
-    "bg-accent text-white [@media(hover:hover)]:hover:bg-[#333331]",
+    "border-transparent bg-accent text-white [@media(hover:hover)]:hover:bg-[#333331]",
   outline:
     "border border-border-strong bg-surface text-text [@media(hover:hover)]:hover:bg-surface-hover",
   secondary:
-    "bg-surface-selected text-text [@media(hover:hover)]:hover:bg-surface-hover",
+    "border-transparent bg-surface-selected text-text [@media(hover:hover)]:hover:bg-surface-hover",
   ghost:
-    "text-text [@media(hover:hover)]:hover:bg-surface-hover",
+    "border-transparent text-text [@media(hover:hover)]:hover:bg-surface-hover",
   destructive:
-    "bg-red-600 text-white [@media(hover:hover)]:hover:bg-red-700",
-  link: "text-text underline-offset-4 [@media(hover:hover)]:hover:underline",
+    "border-transparent bg-red-600 text-white [@media(hover:hover)]:hover:bg-red-700",
+  link:
+    "border-transparent text-text underline-offset-4 [@media(hover:hover)]:hover:underline",
 } as const;
 
 const buttonSizeClasses = {
@@ -46,7 +47,7 @@ export function buttonVariants({
   variant = "default",
 }: ButtonVariantOptions = {}) {
   return [
-    "group/button cursor-pointer [-webkit-app-region:no-drag] inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-clip-padding text-sm font-medium outline-none outline-offset-2 transition-[background-color,border-color,color,opacity,scale,transform] duration-100 active:not-aria-[haspopup]:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-focus [&_svg]:pointer-events-none [&_svg]:shrink-0",
+    "group/button cursor-pointer [-webkit-app-region:no-drag] inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border bg-clip-padding text-sm font-medium outline-none outline-offset-2 transition-[background-color,border-color,color,opacity,scale,transform] duration-100 active:not-aria-[haspopup]:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-focus [&_svg]:pointer-events-none [&_svg]:shrink-0",
     buttonVariantClasses[variant],
     buttonSizeClasses[size],
     className,
