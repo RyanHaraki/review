@@ -6,6 +6,8 @@ const desktopBridge: DesktopBridge = {
   getPlatform: () => process.platform,
   getSetupStatus: () => ipcRenderer.invoke("setup:read"),
   connectCodex: () => ipcRenderer.invoke("setup:connect-codex"),
+  readPreferences: () => ipcRenderer.invoke("preferences:read"),
+  savePreferences: (preferences) => ipcRenderer.invoke("preferences:save", preferences),
   listGitHubRepositories: () => ipcRenderer.invoke("setup:list-github-repositories"),
   listPullRequests: (repositories) => ipcRenderer.invoke("pull-requests:list", repositories),
 };

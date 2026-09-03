@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { openReviewDatabase } from "./client.js";
 import { readPullRequestCache, writePullRequestCache } from "./pull-request-cache.js";
+import { readUserPreferences, writeUserPreferences } from "./UserPreferences.js";
 
 test("creates the initial SQLite schema", () => {
   const directory = mkdtempSync(join(tmpdir(), "review-database-"));
@@ -20,12 +21,47 @@ test("creates the initial SQLite schema", () => {
     assert.ok(tableNames.includes("repositories"));
     assert.ok(tableNames.includes("pull_requests"));
     assert.ok(tableNames.includes("pull_request_summaries"));
+    assert.ok(tableNames.includes("user_preferences"));
     assert.ok(tableNames.includes("review_revisions"));
     assert.ok(tableNames.includes("threads"));
     assert.ok(tableNames.includes("messages"));
 
+    const summaryColumns = reviewDatabase.database
+      .prepare("PRAGMA table_info(pull_request_summaries)")
+      .all()
+      .map((row) => String(row.name));
+    assert.ok(summaryColumns.includes("status"));
+
     const journalMode = reviewDatabase.database.prepare("PRAGMA journal_mode").get();
     assert.equal(journalMode?.journal_mode, "wal");
+    reviewDatabase.close();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("stores user preferences", () => {
+  const directory = mkdtempSync(join(tmpdir(), "review-user-preferences-"));
+
+  try {
+    const reviewDatabase = openReviewDatabase(directory);
+    assert.deepEqual(readUserPreferences(reviewDatabase), {
+      repositories: [],
+      pullRequestStatuses: ["draft", "open"],
+      setupComplete: false,
+    });
+
+    writeUserPreferences(reviewDatabase, {
+      repositories: ["openai/example"],
+      pullRequestStatuses: ["open", "approved"],
+      setupComplete: true,
+    });
+
+    assert.deepEqual(readUserPreferences(reviewDatabase), {
+      repositories: ["openai/example"],
+      pullRequestStatuses: ["open", "approved"],
+      setupComplete: true,
+    });
     reviewDatabase.close();
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -57,6 +93,7 @@ test("caches pull request summaries for a selected repository", () => {
           baseSha: "base",
           headSha: "head",
           reviewState: "approved",
+          status: "approved",
         }],
       }],
     });
@@ -65,6 +102,7 @@ test("caches pull request summaries for a selected repository", () => {
     assert.deepEqual(cached.freshRepositories, ["openai/example"]);
     assert.deepEqual(cached.cachedRepositories, ["openai/example"]);
     assert.equal(cached.groups[0]?.pullRequests[0]?.title, "Keep the list current");
+    assert.equal(cached.groups[0]?.pullRequests[0]?.status, "approved");
     reviewDatabase.close();
   } finally {
     rmSync(directory, { recursive: true, force: true });

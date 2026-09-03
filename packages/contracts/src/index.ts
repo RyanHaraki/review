@@ -99,6 +99,22 @@ export type PullRequestReviewState =
   | "reviewRequired"
   | "none";
 
+export type PullRequestStatus =
+  | "draft"
+  | "open"
+  | "inReview"
+  | "approved"
+  | "merged"
+  | "closed";
+
+export const defaultPullRequestStatuses: PullRequestStatus[] = ["draft", "open"];
+
+export type ReviewPreferences = {
+  repositories: string[];
+  pullRequestStatuses: PullRequestStatus[];
+  setupComplete: boolean;
+};
+
 export type PullRequestSummary = {
   repository: string;
   githubId: string;
@@ -115,6 +131,7 @@ export type PullRequestSummary = {
   baseSha: string;
   headSha: string;
   reviewState: PullRequestReviewState;
+  status: PullRequestStatus;
 };
 
 export type PullRequestGroup = {
@@ -138,6 +155,8 @@ export type DesktopBridge = {
   getPlatform(): string;
   getSetupStatus(): Promise<SetupStatus>;
   connectCodex(): Promise<void>;
+  readPreferences(): Promise<ReviewPreferences>;
+  savePreferences(preferences: ReviewPreferences): Promise<void>;
   listGitHubRepositories(): Promise<GitHubRepositoryChoice[]>;
   listPullRequests(repositories: string[]): Promise<PullRequestGroup[]>;
 };

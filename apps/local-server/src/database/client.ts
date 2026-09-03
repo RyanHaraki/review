@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { migration001, migration002 } from "./schema.js";
+import { migration001, migration002, migration003, migration004 } from "./schema.js";
 
 export type ReviewDatabase = {
   database: DatabaseSync;
@@ -24,7 +24,7 @@ export function openReviewDatabase(dataDirectory: string): ReviewDatabase {
   );
 
   const migration = database.prepare("SELECT version FROM schema_migrations WHERE version = ?");
-  const migrations = [migration001, migration002];
+  const migrations = [migration001, migration002, migration003, migration004];
 
   for (const [index, sql] of migrations.entries()) {
     const version = index + 1;

@@ -113,3 +113,21 @@ export const migration002 = `
   CREATE INDEX IF NOT EXISTS idx_pull_request_summaries_repository_updated
     ON pull_request_summaries(repository, updated_at DESC);
 `;
+
+export const migration003 = `
+  ALTER TABLE pull_request_summaries
+    ADD COLUMN status TEXT NOT NULL DEFAULT 'open'
+    CHECK(status IN ('draft', 'open', 'inReview', 'approved', 'merged', 'closed'));
+
+  DELETE FROM sync_state WHERE key LIKE 'pull-requests:%';
+`;
+
+export const migration004 = `
+  CREATE TABLE IF NOT EXISTS user_preferences (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    repositories_json TEXT NOT NULL,
+    pull_request_statuses_json TEXT NOT NULL,
+    setup_complete INTEGER NOT NULL CHECK(setup_complete IN (0, 1)),
+    updated_at TEXT NOT NULL
+  );
+`;

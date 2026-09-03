@@ -3,6 +3,7 @@ import type {
   PullRequestCacheWrite,
   PullRequestGroup,
   PullRequestReviewState,
+  PullRequestStatus,
   PullRequestSummary,
 } from "@review/contracts";
 
@@ -26,6 +27,7 @@ type PullRequestSummaryRow = {
   base_sha: string;
   head_sha: string;
   review_state: PullRequestReviewState;
+  status: PullRequestStatus;
 };
 
 function toPullRequestSummary(row: PullRequestSummaryRow): PullRequestSummary {
@@ -45,6 +47,7 @@ function toPullRequestSummary(row: PullRequestSummaryRow): PullRequestSummary {
     baseSha: row.base_sha,
     headSha: row.head_sha,
     reviewState: row.review_state,
+    status: row.status,
   };
 }
 
@@ -56,7 +59,7 @@ export function readPullRequestCache(
   const readSummaries = database.prepare(`
     SELECT repository, github_id, number, title, author_login, author_avatar_url,
       additions, deletions, updated_at, is_draft, url, head_ref_name, base_sha,
-      head_sha, review_state
+      head_sha, review_state, status
     FROM pull_request_summaries
     WHERE repository = ?
     ORDER BY updated_at DESC
@@ -97,8 +100,8 @@ export function writePullRequestCache(
     INSERT INTO pull_request_summaries (
       repository, github_id, number, title, author_login, author_avatar_url,
       additions, deletions, updated_at, is_draft, url, head_ref_name, base_sha,
-      head_sha, review_state, fetched_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      head_sha, review_state, status, fetched_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const writeSync = database.prepare(`
     INSERT INTO sync_state (key, value_json, updated_at)
@@ -131,6 +134,7 @@ export function writePullRequestCache(
           pullRequest.baseSha,
           pullRequest.headSha,
           pullRequest.reviewState,
+          pullRequest.status,
           fetchedAt,
         );
       }

@@ -1,4 +1,8 @@
-import type { SetupStatus } from "@review/contracts";
+import {
+  defaultPullRequestStatuses,
+  type ReviewPreferences,
+  type SetupStatus,
+} from "@review/contracts";
 import { z } from "zod/mini";
 
 const setupStorageKey = "review.setup-status";
@@ -27,11 +31,11 @@ const setupStatusSchema = z.object({
   }),
 });
 const repositorySelectionSchema = z.array(z.string());
-const preferencesSchema = z.object({
+const legacyPreferencesSchema = z.object({
   repositories: repositorySelectionSchema,
 });
 
-export type ReviewPreferences = z.infer<typeof preferencesSchema>;
+let preferencesSaveQueue = Promise.resolve();
 
 function readStorage<T>(storage: Storage, key: string, schema: z.ZodMiniType<T>, fallback: T): T {
   const storedValue = storage.getItem(key);
@@ -55,26 +59,43 @@ export function cacheSetup(setup: SetupStatus): void {
   window.sessionStorage.setItem(setupStorageKey, JSON.stringify(setup));
 }
 
-export function readSelectedRepositories(): string[] {
-  return readStorage(window.localStorage, repositorySelectionKey, repositorySelectionSchema, []);
+export async function readPreferences(): Promise<ReviewPreferences> {
+  await preferencesSaveQueue.catch(() => undefined);
+  const storedPreferences = await window.reviewDesktop.readPreferences();
+  if (storedPreferences.setupComplete || storedPreferences.repositories.length > 0) {
+    return storedPreferences;
+  }
+
+  const legacyPreferences = readStorage(
+    window.localStorage,
+    preferencesKey,
+    legacyPreferencesSchema,
+    null,
+  );
+  const legacyRepositories = legacyPreferences?.repositories
+    ?? readStorage(window.localStorage, repositorySelectionKey, repositorySelectionSchema, []);
+  const legacySetupComplete = window.localStorage.getItem(setupCompleteKey) === "true";
+
+  if (legacyRepositories.length === 0 && !legacySetupComplete) {
+    return storedPreferences;
+  }
+
+  const migratedPreferences: ReviewPreferences = {
+    repositories: legacyRepositories,
+    pullRequestStatuses: [...defaultPullRequestStatuses],
+    setupComplete: legacySetupComplete,
+  };
+  await savePreferences(migratedPreferences);
+  window.localStorage.removeItem(preferencesKey);
+  window.localStorage.removeItem(repositorySelectionKey);
+  window.localStorage.removeItem(setupCompleteKey);
+  return migratedPreferences;
 }
 
-export function cacheSelectedRepositories(repositories: string[]): void {
-  window.localStorage.setItem(repositorySelectionKey, JSON.stringify(repositories));
-}
-
-export function readPreferences(): ReviewPreferences | null {
-  return readStorage(window.localStorage, preferencesKey, preferencesSchema, null);
-}
-
-export function savePreferences(preferences: ReviewPreferences): void {
-  window.localStorage.setItem(preferencesKey, JSON.stringify(preferences));
-}
-
-export function isSetupComplete(): boolean {
-  return window.localStorage.getItem(setupCompleteKey) === "true";
-}
-
-export function markSetupComplete(): void {
-  window.localStorage.setItem(setupCompleteKey, "true");
+export function savePreferences(preferences: ReviewPreferences): Promise<void> {
+  const save = preferencesSaveQueue
+    .catch(() => undefined)
+    .then(() => window.reviewDesktop.savePreferences(preferences));
+  preferencesSaveQueue = save;
+  return save;
 }

@@ -5,17 +5,37 @@ import type {
   LocalServerHealth,
   PullRequestCacheRead,
   PullRequestCacheWrite,
+  ReviewPreferences,
 } from "@review/contracts";
 import { z } from "zod";
 
 import type { ReviewDatabase } from "./database/client.js";
 import { readPullRequestCache, writePullRequestCache } from "./database/pull-request-cache.js";
+import { readUserPreferences, writeUserPreferences } from "./database/UserPreferences.js";
 
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const repositoryRequestSchema = z.object({
   repositories: z.array(z.string().regex(repositoryPattern)).max(50),
 });
-type JsonResponse = LocalServerHealth | PullRequestCacheRead | { error: string } | { ok: true };
+const pullRequestStatusSchema = z.enum([
+  "draft",
+  "open",
+  "inReview",
+  "approved",
+  "merged",
+  "closed",
+]);
+const preferencesSchema = z.object({
+  repositories: z.array(z.string().regex(repositoryPattern)).max(50),
+  pullRequestStatuses: z.array(pullRequestStatusSchema).max(6),
+  setupComplete: z.boolean(),
+});
+type JsonResponse =
+  | LocalServerHealth
+  | PullRequestCacheRead
+  | ReviewPreferences
+  | { error: string }
+  | { ok: true };
 
 function readBody(request: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -76,6 +96,26 @@ export function createReviewServer(reviewDatabase: ReviewDatabase) {
         return;
       }
       sendJson(response, 200, readPullRequestCache(reviewDatabase, repositories));
+      return;
+    }
+
+    if (request.method === "GET" && request.url === "/preferences") {
+      sendJson(response, 200, readUserPreferences(reviewDatabase));
+      return;
+    }
+
+    if (request.method === "PUT" && request.url === "/preferences") {
+      try {
+        const result = preferencesSchema.safeParse(JSON.parse(await readBody(request)));
+        if (!result.success) {
+          sendJson(response, 400, { error: "Invalid preferences" });
+          return;
+        }
+        writeUserPreferences(reviewDatabase, result.data);
+        sendJson(response, 200, { ok: true });
+      } catch {
+        sendJson(response, 400, { error: "Invalid preferences" });
+      }
       return;
     }
 
