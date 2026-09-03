@@ -149,7 +149,7 @@ export function SetupPage() {
                     pullRequestStatuses: selectedStatuses,
                     setupComplete: true,
                   });
-                  await navigate({ to: "/" });
+                  await navigate({ search: { variant: "A" }, to: "/" });
                 } catch {
                   setPreferenceError(true);
                 } finally {
