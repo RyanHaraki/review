@@ -20,14 +20,17 @@ export function PullRequestWorkspace({
   selectedPullRequest,
   statusGroups,
 }: PullRequestWorkspaceProps) {
+
   const copyBranchName = useCallback((branchName: string) => {
     void navigator.clipboard.writeText(branchName).catch(() => undefined);
   }, []);
+
   const copyHeadBranch = useCallback(() => {
     if (selectedPullRequest) {
       copyBranchName(selectedPullRequest.headRefName);
     }
   }, [copyBranchName, selectedPullRequest]);
+
   const copyBaseBranch = useCallback(() => {
     if (selectedPullRequest) {
       copyBranchName(selectedPullRequest.baseRefName);
@@ -49,16 +52,7 @@ export function PullRequestWorkspace({
             <div className="w-full">
               <div className="flex items-center gap-1 text-sm text-text-secondary">
                 <Tooltip>
-                  <TooltipTrigger
-                    render={() => (      <a
-                      href={`https://github.com/${selectedPullRequest.repository}`}
-                      rel="noreferrer"
-                      target="_blank"
-                    />)}
-
-
-
-                  >
+                  <TooltipTrigger>
                     {selectedPullRequest.repository}
                   </TooltipTrigger>
                   <TooltipContent>Open repo in browser</TooltipContent>
@@ -79,7 +73,7 @@ export function PullRequestWorkspace({
                 </Button>
               </div>
               <div className="mt-1 flex items-center justify-between gap-4 overflow-x-auto whitespace-nowrap text-sm text-text-secondary">
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-3">
                   <Avatar className="size-6" size="sm">
                     <AvatarImage alt="" src={selectedPullRequest.authorAvatarUrl ?? undefined} />
                     <AvatarFallback aria-hidden="true">
@@ -87,7 +81,7 @@ export function PullRequestWorkspace({
                     </AvatarFallback>
                   </Avatar>
                   <span>{selectedPullRequest.authorLogin}</span>
-                  <div className="flex shrink-0 items-center gap-1 font-mono">
+                  <div className="flex shrink-0 items-center gap-2 font-mono">
                     <Tooltip>
                       <TooltipTrigger
                         render={<Button onClick={copyHeadBranch} size="sm" variant="text" />}
@@ -108,13 +102,18 @@ export function PullRequestWorkspace({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="tabular-nums">
-                    {selectedPullRequest.changedFiles.toLocaleString()} {selectedPullRequest.changedFiles === 1 ? "file" : "files"} changed
-                  </span>
-                  <span className="tabular-nums">
-                    <span className="text-[#1a7f37]">+{selectedPullRequest.additions.toLocaleString()}</span>{" "}
-                    <span className="text-[#cf222e]">-{selectedPullRequest.deletions.toLocaleString()}</span>
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger render={<Button size="sm" variant="ghost" />}>
+                      <span className="tabular-nums">
+                        {selectedPullRequest.changedFiles.toLocaleString()} {selectedPullRequest.changedFiles === 1 ? "file" : "files"} changed
+                      </span>
+                      <span className="tabular-nums">
+                        <span className="text-[#1a7f37]">+{selectedPullRequest.additions.toLocaleString()}</span>{" "}
+                        <span className="text-[#cf222e]">-{selectedPullRequest.deletions.toLocaleString()}</span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>View diffs</TooltipContent>
+                  </Tooltip>
                   <time className="ml-2" dateTime={selectedPullRequest.updatedAt}>
                     Updated {formatPullRequestTime(selectedPullRequest.updatedAt)}
                   </time>
