@@ -20,7 +20,10 @@ export async function readPreferences() {
 
 Good
 ```typescript
-// you have 
+// you full ymigrate from localStorage to sqlite and the function just becomes
+export async function readPreferences() {
+    return window.reviewDesktop.readPreferences(); // sqlite call
+}
 
 ```
 
