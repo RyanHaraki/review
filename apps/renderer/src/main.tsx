@@ -9,6 +9,10 @@ import { configureQueryFocusManager } from "./query/query-focus-manager";
 import { router } from "./router";
 import "./index.css";
 
+if (import.meta.env.DEV) {
+  void import("react-grab");
+}
+
 configureQueryFocusManager();
 
 const rootElement = document.getElementById("root");
