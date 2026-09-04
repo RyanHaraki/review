@@ -74,10 +74,6 @@ export function PullRequestWorkspace({
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-5">
-          <SidebarTrigger />
-          <span className="text-sm font-medium text-text-secondary">Review workspace</span>
-        </header>
         {selectedPullRequest ? (
           <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
             <div className="mx-auto max-w-3xl">
