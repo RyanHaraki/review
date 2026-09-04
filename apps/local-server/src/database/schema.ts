@@ -131,3 +131,14 @@ export const migration004 = `
     updated_at TEXT NOT NULL
   );
 `;
+
+export const migration005 = `
+  ALTER TABLE pull_request_summaries
+    ADD COLUMN base_ref_name TEXT NOT NULL DEFAULT '';
+
+  ALTER TABLE pull_request_summaries
+    ADD COLUMN changed_files INTEGER NOT NULL DEFAULT 0
+    CHECK(changed_files >= 0);
+
+  DELETE FROM sync_state WHERE key LIKE 'pull-requests:%';
+`;

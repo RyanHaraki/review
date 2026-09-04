@@ -7,6 +7,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { queryClient } from "./query/query-client";
 import { configureQueryFocusManager } from "./query/query-focus-manager";
 import { router } from "./router";
+import { TooltipProvider } from "./components/ui/tooltip";
 import "./index.css";
 
 if (import.meta.env.DEV) {
@@ -31,7 +32,9 @@ createRoot(rootElement).render(
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <TooltipProvider>
+          <RouterProvider router={router} />
+        </TooltipProvider>
       </QueryClientProvider>
     </IconContext.Provider>
   </StrictMode>,

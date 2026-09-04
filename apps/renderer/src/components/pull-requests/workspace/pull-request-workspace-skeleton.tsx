@@ -62,21 +62,24 @@ export function PullRequestWorkspaceSkeleton() {
       </Sidebar>
       <SidebarInset>
         <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
-          <div className="mx-auto max-w-3xl">
+          <div className="w-full">
             <div className="h-3 w-32 animate-pulse rounded bg-surface-selected" />
             <div className="mt-3 flex items-start justify-between gap-4">
               <div className="h-8 w-3/4 animate-pulse rounded bg-surface-selected" />
               <div className="h-9 w-32 shrink-0 animate-pulse rounded-md bg-surface-selected" />
             </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {skeletonRows.slice(0, 3).map((card) => (
-                <div className="rounded-xl border border-border bg-surface p-4" key={card}>
-                  <div className="h-3 w-12 animate-pulse rounded bg-surface-selected" />
-                  <div className="mt-2 h-4 w-24 animate-pulse rounded bg-surface-selected" />
-                </div>
-              ))}
+            <div className="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap">
+              <div className="h-4 w-20 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-3 w-2 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-4 w-48 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-3 w-2 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-4 w-20 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-3 w-2 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-4 w-24 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-3 w-2 shrink-0 animate-pulse rounded bg-surface-selected" />
+              <div className="h-4 w-24 shrink-0 animate-pulse rounded bg-surface-selected" />
             </div>
-            <div className="mt-6 min-h-80 rounded-xl border border-border bg-surface p-6">
+            <div className="mt-6 min-h-80 w-full rounded-xl border border-border bg-surface p-6">
               <div className="h-4 w-12 animate-pulse rounded bg-surface-selected" />
               <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-surface-selected" />
               <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-surface-selected" />

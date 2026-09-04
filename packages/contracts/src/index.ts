@@ -124,10 +124,12 @@ export type PullRequestSummary = {
   authorAvatarUrl: string | null;
   additions: number;
   deletions: number;
+  changedFiles: number;
   updatedAt: string;
   isDraft: boolean;
   url: string;
   headRefName: string;
+  baseRefName: string;
   baseSha: string;
   headSha: string;
   reviewState: PullRequestReviewState;
