@@ -35,9 +35,6 @@ export function PullRequestWorkspace({
         <SidebarHeader>
           <div>
             <h1 className="text-base font-semibold">Pull requests</h1>
-            <p className="mt-0.5 text-xs text-text-secondary">
-              {pullRequestCount} across {repositoryCount} {repositoryCount === 1 ? "repository" : "repositories"}
-            </p>
           </div>
           {filters}
           {notice}

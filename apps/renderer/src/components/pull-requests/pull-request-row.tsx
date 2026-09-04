@@ -49,7 +49,7 @@ function ReviewStateIcon({ state }: { state: PullRequestReviewState }) {
 
 export function PullRequestRow({ pullRequest }: { pullRequest: PullRequestSummary }) {
   return (
-    <tr className="group border-t border-border/75 first:border-t-0 [@media(hover:hover)]:hover:bg-surface-hover/70">
+    <tr className="group border-t border-border/75 [@media(hover:hover)]:hover:bg-surface-hover/70">
       <td className="w-full px-4 py-2.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           {pullRequest.authorAvatarUrl ? (
