@@ -20,10 +20,12 @@ type PullRequestSummaryRow = {
   author_avatar_url: string | null;
   additions: number;
   deletions: number;
+  changed_files: number;
   updated_at: string;
   is_draft: number;
   url: string;
   head_ref_name: string;
+  base_ref_name: string;
   base_sha: string;
   head_sha: string;
   review_state: PullRequestReviewState;
@@ -40,10 +42,12 @@ function toPullRequestSummary(row: PullRequestSummaryRow): PullRequestSummary {
     authorAvatarUrl: row.author_avatar_url,
     additions: row.additions,
     deletions: row.deletions,
+    changedFiles: row.changed_files,
     updatedAt: row.updated_at,
     isDraft: row.is_draft === 1,
     url: row.url,
     headRefName: row.head_ref_name,
+    baseRefName: row.base_ref_name,
     baseSha: row.base_sha,
     headSha: row.head_sha,
     reviewState: row.review_state,
@@ -58,8 +62,8 @@ export function readPullRequestCache(
   const database = reviewDatabase.database;
   const readSummaries = database.prepare(`
     SELECT repository, github_id, number, title, author_login, author_avatar_url,
-      additions, deletions, updated_at, is_draft, url, head_ref_name, base_sha,
-      head_sha, review_state, status
+      additions, deletions, changed_files, updated_at, is_draft, url,
+      head_ref_name, base_ref_name, base_sha, head_sha, review_state, status
     FROM pull_request_summaries
     WHERE repository = ?
     ORDER BY updated_at DESC
@@ -99,9 +103,10 @@ export function writePullRequestCache(
   const insertSummary = database.prepare(`
     INSERT INTO pull_request_summaries (
       repository, github_id, number, title, author_login, author_avatar_url,
-      additions, deletions, updated_at, is_draft, url, head_ref_name, base_sha,
-      head_sha, review_state, status, fetched_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      additions, deletions, changed_files, updated_at, is_draft, url,
+      head_ref_name, base_ref_name, base_sha, head_sha, review_state, status,
+      fetched_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const writeSync = database.prepare(`
     INSERT INTO sync_state (key, value_json, updated_at)
@@ -127,10 +132,12 @@ export function writePullRequestCache(
           pullRequest.authorAvatarUrl,
           pullRequest.additions,
           pullRequest.deletions,
+          pullRequest.changedFiles,
           pullRequest.updatedAt,
           Number(pullRequest.isDraft),
           pullRequest.url,
           pullRequest.headRefName,
+          pullRequest.baseRefName,
           pullRequest.baseSha,
           pullRequest.headSha,
           pullRequest.reviewState,

@@ -34,16 +34,3 @@ export function formatPullRequestTime(updatedAt: string): string {
   }
   return relativeTime.format(Math.round(elapsedDays / 30), "month");
 }
-
-export function getReviewStateLabel(pullRequest: PullRequestSummary): string {
-  if (pullRequest.reviewState === "approved") {
-    return "Approved";
-  }
-  if (pullRequest.reviewState === "changesRequested") {
-    return "Changes requested";
-  }
-  if (pullRequest.reviewState === "reviewRequired") {
-    return "Review required";
-  }
-  return "No review decision";
-}
