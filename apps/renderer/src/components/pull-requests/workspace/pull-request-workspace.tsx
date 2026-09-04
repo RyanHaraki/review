@@ -141,7 +141,7 @@ export function PullRequestWorkspace({
                   <div className="flex shrink-0 items-center gap-1 font-mono">
                     <Tooltip>
                       <TooltipTrigger
-                        render={<Button onClick={copyHeadBranch} size="sm" variant="ghost" />}
+                        render={<Button onClick={copyHeadBranch} size="sm" variant="text" />}
                       >
                         {selectedPullRequest.headRefName}
                       </TooltipTrigger>
@@ -150,7 +150,7 @@ export function PullRequestWorkspace({
                     <span aria-hidden="true">&rarr;</span>
                     <Tooltip>
                       <TooltipTrigger
-                        render={<Button onClick={copyBaseBranch} size="sm" variant="ghost" />}
+                        render={<Button onClick={copyBaseBranch} size="sm" variant="text" />}
                       >
                         {selectedPullRequest.baseRefName}
                       </TooltipTrigger>

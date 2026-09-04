@@ -10,6 +10,8 @@ const buttonVariantClasses = {
     "border-transparent bg-surface-selected text-text [@media(hover:hover)]:hover:bg-surface-hover",
   ghost:
     "border-transparent text-text [@media(hover:hover)]:hover:bg-surface-hover",
+  text:
+    "!h-auto !rounded-none !border-transparent !bg-transparent !p-0 font-normal text-text-secondary [@media(hover:hover)]:hover:bg-transparent [@media(hover:hover)]:hover:text-black",
   destructive:
     "border-transparent bg-red-600 text-white [@media(hover:hover)]:hover:bg-red-700",
   link:
