@@ -1,18 +1,11 @@
-import {
-  defaultPullRequestStatuses,
-  type GitHubRepositoryChoice,
-  type PullRequestStatus,
-} from "@review/contracts";
+import type { GitHubRepositoryChoice } from "@review/contracts";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { CodexStep, GitHubStep } from "../../components/setup/connection-steps";
 import { RepositoryStep } from "../../components/setup/repository-step";
 import { Button } from "../../components/ui/button";
-import {
-  readPreferences,
-  savePreferences,
-} from "./setup-persistence";
+import { useUserPreferences } from "../../Hooks/UseUserPreferences";
 import { useRepositories } from "./use-repositories";
 import { useSetupStatus } from "./use-setup-status";
 
@@ -29,12 +22,9 @@ function SetupProgress({ completedSteps }: { completedSteps: number }) {
 }
 
 export function SetupPage() {
-  const [selectedRepositoryValues, setSelectedRepositoryValues] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<PullRequestStatus[]>(
-    defaultPullRequestStatuses,
-  );
   const [savingPreferences, setSavingPreferences] = useState(false);
-  const [preferenceError, setPreferenceError] = useState(false);
+  const { preferences, preferenceError, updatePreferences } = useUserPreferences();
+  const selectedRepositoryValues = preferences?.repositories ?? [];
   const navigate = useNavigate();
   const {
     setup,
@@ -52,40 +42,49 @@ export function SetupPage() {
   );
 
   useEffect(() => {
-    void readPreferences().then((preferences) => {
-      setSelectedRepositoryValues(preferences.repositories);
-      setSelectedStatuses(preferences.pullRequestStatuses);
-    }).catch(() => setPreferenceError(true));
-  }, []);
-
-  useEffect(() => {
-    if (repositorySetup.choices.length === 0) {
+    if (!preferences || repositorySetup.choices.length === 0) {
       return;
     }
     const availableValues = new Set(repositorySetup.choices.map((repository) => repository.value));
-    setSelectedRepositoryValues((currentValues) => {
-      const validValues = currentValues.filter((value) => availableValues.has(value));
-      if (validValues.length === currentValues.length) {
-        return currentValues;
-      }
-      void savePreferences({
-        repositories: validValues,
-        pullRequestStatuses: selectedStatuses,
-        setupComplete: false,
-      }).catch(() => setPreferenceError(true));
-      return validValues;
-    });
-  }, [repositorySetup.choices, selectedStatuses]);
-
-  const selectRepositories = (repositories: GitHubRepositoryChoice[]) => {
-    const values = repositories.map((repository) => repository.value);
-    setSelectedRepositoryValues(values);
-    void savePreferences({
-      repositories: values,
-      pullRequestStatuses: selectedStatuses,
+    const validValues = preferences.repositories.filter((value) => availableValues.has(value));
+    if (validValues.length === preferences.repositories.length) {
+      return;
+    }
+    void updatePreferences({
+      ...preferences,
+      repositories: validValues,
       setupComplete: false,
-    }).catch(() => setPreferenceError(true));
-  };
+    }).catch(() => undefined);
+  }, [preferences, repositorySetup.choices, updatePreferences]);
+
+  const selectRepositories = useCallback((repositories: GitHubRepositoryChoice[]) => {
+    if (!preferences) {
+      return;
+    }
+    const values = repositories.map((repository) => repository.value);
+    void updatePreferences({
+      ...preferences,
+      repositories: values,
+      setupComplete: false,
+    }).catch(() => undefined);
+  }, [preferences, updatePreferences]);
+  const finishSetup = useCallback(async () => {
+    if (!preferences) {
+      return;
+    }
+    setSavingPreferences(true);
+    try {
+      await updatePreferences({
+        ...preferences,
+        setupComplete: true,
+      });
+      await navigate({ to: "/" });
+    } catch {
+      // The preferences hook reports the error.
+    } finally {
+      setSavingPreferences(false);
+    }
+  }, [navigate, preferences, updatePreferences]);
   const completedSteps = setup
     ? Number(setup.github.state === "connected")
       + Number(setup.codex.state === "connected")
@@ -139,23 +138,8 @@ export function SetupPage() {
             <Button
               size="lg"
               variant="default"
-              disabled={completedSteps < 3 || savingPreferences}
-              onClick={async () => {
-                setSavingPreferences(true);
-                setPreferenceError(false);
-                try {
-                  await savePreferences({
-                    repositories: selectedRepositoryValues,
-                    pullRequestStatuses: selectedStatuses,
-                    setupComplete: true,
-                  });
-                  await navigate({ to: "/" });
-                } catch {
-                  setPreferenceError(true);
-                } finally {
-                  setSavingPreferences(false);
-                }
-              }}
+              disabled={!preferences || completedSteps < 3 || savingPreferences}
+              onClick={finishSetup}
             >
               Get started
             </Button>

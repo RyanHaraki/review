@@ -1,14 +1,10 @@
 import {
-  defaultPullRequestStatuses,
   type ReviewPreferences,
   type SetupStatus,
 } from "@review/contracts";
 import { z } from "zod/mini";
 
 const setupStorageKey = "review.setup-status";
-const repositorySelectionKey = "review.selected-repositories";
-const setupCompleteKey = "review.setup-complete";
-const preferencesKey = "review.preferences";
 const connectionStateSchema = z.enum(["connected", "disconnected", "unavailable"]);
 const setupStatusSchema = z.object({
   github: z.object({
@@ -30,11 +26,6 @@ const setupStatusSchema = z.object({
     ),
   }),
 });
-const repositorySelectionSchema = z.array(z.string());
-const legacyPreferencesSchema = z.object({
-  repositories: repositorySelectionSchema,
-});
-
 let preferencesSaveQueue = Promise.resolve();
 
 function readStorage<T>(storage: Storage, key: string, schema: z.ZodMiniType<T>, fallback: T): T {
@@ -61,35 +52,7 @@ export function cacheSetup(setup: SetupStatus): void {
 
 export async function readPreferences(): Promise<ReviewPreferences> {
   await preferencesSaveQueue.catch(() => undefined);
-  const storedPreferences = await window.reviewDesktop.readPreferences();
-  if (storedPreferences.setupComplete || storedPreferences.repositories.length > 0) {
-    return storedPreferences;
-  }
-
-  const legacyPreferences = readStorage(
-    window.localStorage,
-    preferencesKey,
-    legacyPreferencesSchema,
-    null,
-  );
-  const legacyRepositories = legacyPreferences?.repositories
-    ?? readStorage(window.localStorage, repositorySelectionKey, repositorySelectionSchema, []);
-  const legacySetupComplete = window.localStorage.getItem(setupCompleteKey) === "true";
-
-  if (legacyRepositories.length === 0 && !legacySetupComplete) {
-    return storedPreferences;
-  }
-
-  const migratedPreferences: ReviewPreferences = {
-    repositories: legacyRepositories,
-    pullRequestStatuses: [...defaultPullRequestStatuses],
-    setupComplete: legacySetupComplete,
-  };
-  await savePreferences(migratedPreferences);
-  window.localStorage.removeItem(preferencesKey);
-  window.localStorage.removeItem(repositorySelectionKey);
-  window.localStorage.removeItem(setupCompleteKey);
-  return migratedPreferences;
+  return window.reviewDesktop.readPreferences();
 }
 
 export function savePreferences(preferences: ReviewPreferences): Promise<void> {

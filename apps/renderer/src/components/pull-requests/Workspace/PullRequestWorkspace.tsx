@@ -14,6 +14,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "../../ui/Sidebar";
+import { Button } from "../../ui/button";
 import {
   formatPullRequestTime,
   getReviewStateLabel,
@@ -73,9 +74,6 @@ export function PullRequestWorkspace({
             </SidebarGroup>
           ))}
         </SidebarContent>
-        <SidebarFooter>
-          <span className="text-xs text-text-secondary">Select a pull request to review it.</span>
-        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
@@ -93,14 +91,13 @@ export function PullRequestWorkspace({
                 <h2 className="max-w-2xl text-2xl font-semibold tracking-[-0.02em]">
                   {selectedPullRequest.title}
                 </h2>
-                <a
-                  className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm font-medium outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus"
-                  href={selectedPullRequest.url}
-                  rel="noreferrer"
-                  target="_blank"
+                <Button
+                  nativeButton={false}
+                  render={<a href={selectedPullRequest.url} rel="noreferrer" target="_blank" />}
+                  variant="outline"
                 >
-                  Open on GitHub
-                </a>
+                  Open in GitHub
+                </Button>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-border bg-surface p-4">

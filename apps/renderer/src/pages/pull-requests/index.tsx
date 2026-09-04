@@ -2,14 +2,13 @@ import type {
   GitHubRepositoryChoice,
   PullRequestStatus,
   PullRequestSummary,
-  ReviewPreferences,
 } from "@review/contracts";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { PullRequestFilters } from "../../components/pull-requests/Workspace/PullRequestFilters";
 import { PullRequestWorkspace } from "../../components/pull-requests/Workspace/PullRequestWorkspace";
 import { PullRequestWorkspaceSkeleton } from "../../components/pull-requests/Workspace/PullRequestWorkspaceSkeleton";
-import { readPreferences, savePreferences } from "../setup/setup-persistence";
+import { useUserPreferences } from "../../Hooks/UseUserPreferences";
 import { useRepositories } from "../setup/use-repositories";
 import { usePullRequests } from "./use-pull-requests";
 
@@ -33,8 +32,7 @@ const defaultStatusChoices = statusChoices.filter(
 const emptyRepositories: string[] = [];
 
 export function PullRequestsPage() {
-  const [preferences, setPreferences] = useState<ReviewPreferences | null>(null);
-  const [preferenceError, setPreferenceError] = useState(false);
+  const { preferences, preferenceError, updatePreferences } = useUserPreferences();
   const [selectedPullRequestId, setSelectedPullRequestId] = useState<string | null>(null);
   const repositories = preferences?.repositories ?? emptyRepositories;
   const selectedStatuses = useMemo(() => {
@@ -85,34 +83,22 @@ export function PullRequestsPage() {
   const repositorySelectionLabel = `${repositories.length} ${repositories.length === 1 ? "repo" : "repos"} selected`;
   const statusSelectionLabel = `${selectedStatuses.length} ${selectedStatuses.length === 1 ? "status" : "statuses"} selected`;
 
-  useEffect(() => {
-    void readPreferences()
-      .then(setPreferences)
-      .catch(() => setPreferenceError(true));
-  }, []);
-
-  const updatePreferences = useCallback((nextPreferences: ReviewPreferences) => {
-    setPreferences(nextPreferences);
-    setPreferenceError(false);
-    void savePreferences(nextPreferences).catch(() => setPreferenceError(true));
-  }, []);
-
   const selectRepositories = useCallback((selected: GitHubRepositoryChoice[]) => {
     if (!preferences) {
       return;
     }
     const values = selected.map((repository) => repository.value);
-    updatePreferences({ ...preferences, repositories: values });
+    void updatePreferences({ ...preferences, repositories: values }).catch(() => undefined);
   }, [preferences, updatePreferences]);
 
   const selectStatuses = useCallback((selected: StatusChoice[]) => {
     if (!preferences) {
       return;
     }
-    updatePreferences({
+    void updatePreferences({
       ...preferences,
       pullRequestStatuses: selected.map((status) => status.value),
-    });
+    }).catch(() => undefined);
   }, [preferences, updatePreferences]);
 
   const selectPullRequest = useCallback((pullRequest: PullRequestSummary) => {
