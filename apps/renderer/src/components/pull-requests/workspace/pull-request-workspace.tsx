@@ -131,27 +131,14 @@ export function PullRequestWorkspace({
               </div>
               <div className="mt-1 flex items-center justify-between gap-4 overflow-x-auto whitespace-nowrap text-sm text-text-secondary">
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    nativeButton={false}
-                    render={
-                      <a
-                        href={`https://github.com/${encodeURIComponent(selectedPullRequest.authorLogin)}`}
-                        rel="noreferrer"
-                        target="_blank"
-                      />
-                    }
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <Avatar className="size-6" size="sm">
-                      <AvatarImage alt="" src={selectedPullRequest.authorAvatarUrl ?? undefined} />
-                      <AvatarFallback aria-hidden="true">
-                        {selectedPullRequest.authorLogin.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {selectedPullRequest.authorLogin}
-                  </Button>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <Avatar className="size-6" size="sm">
+                    <AvatarImage alt="" src={selectedPullRequest.authorAvatarUrl ?? undefined} />
+                    <AvatarFallback aria-hidden="true">
+                      {selectedPullRequest.authorLogin.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span>{selectedPullRequest.authorLogin}</span>
+                  <div className="flex shrink-0 items-center gap-1 font-mono">
                     <Tooltip>
                       <TooltipTrigger
                         render={<Button onClick={copyHeadBranch} size="sm" variant="ghost" />}
