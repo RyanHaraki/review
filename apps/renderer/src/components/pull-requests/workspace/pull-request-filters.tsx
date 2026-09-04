@@ -1,7 +1,7 @@
 import type { GitHubRepositoryChoice, PullRequestStatus } from "@review/contracts";
 
 import { Button } from "../../ui/button";
-import { ComboboxMultiSelect } from "../../ui/Combobox";
+import { ComboboxMultiSelect } from "../../ui/combobox";
 
 type StatusChoice = {
   label: string;

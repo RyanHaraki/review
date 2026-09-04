@@ -11,7 +11,7 @@ import { z } from "zod";
 
 import type { ReviewDatabase } from "./database/client.js";
 import { readPullRequestCache, writePullRequestCache } from "./database/pull-request-cache.js";
-import { readUserPreferences, writeUserPreferences } from "./database/UserPreferences.js";
+import { readUserPreferences, writeUserPreferences } from "./database/user-preferences.js";
 
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const repositoryRequestSchema = z.object({

@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { openReviewDatabase } from "./client.js";
 import { readPullRequestCache, writePullRequestCache } from "./pull-request-cache.js";
-import { readUserPreferences, writeUserPreferences } from "./UserPreferences.js";
+import { readUserPreferences, writeUserPreferences } from "./user-preferences.js";
 
 test("creates the initial SQLite schema", () => {
   const directory = mkdtempSync(join(tmpdir(), "review-database-"));

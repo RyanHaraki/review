@@ -3,8 +3,8 @@ import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 
-import { queryClient } from "./Query/query-client";
-import { configureQueryFocusManager } from "./Query/query-focus-manager";
+import { queryClient } from "./query/query-client";
+import { configureQueryFocusManager } from "./query/query-focus-manager";
 import { router } from "./router";
 import "./index.css";
 

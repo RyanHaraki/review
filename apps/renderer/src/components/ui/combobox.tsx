@@ -1,7 +1,7 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import type { ComponentProps, ReactNode } from "react";
 
-import { CheckboxIndicator } from "./Checkbox";
+import { CheckboxIndicator } from "./checkbox";
 
 type ComboboxTriggerVariant = "default" | "toolbar";
 
