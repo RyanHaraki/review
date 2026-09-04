@@ -1,16 +1,6 @@
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
-  SidebarRail,
 } from "../../ui/sidebar";
 import { Button } from "../../ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
@@ -21,6 +11,7 @@ import {
   type PullRequestWorkspaceProps,
 } from "./pull-request-workspace-types";
 import { GithubIcon } from "../../icons/github-icon";
+import { PullRequestSidebar } from "./pull-request-sidebar";
 
 export function PullRequestWorkspace({
   filters,
@@ -45,50 +36,13 @@ export function PullRequestWorkspace({
 
   return (
     <SidebarProvider className="h-[calc(100vh-2.125rem)]" width="24rem">
-      <Sidebar collapsible="offcanvas">
-        <SidebarHeader>
-          <div>
-            <h1 className="text-base font-semibold">Pull requests</h1>
-          </div>
-          {filters}
-          {notice}
-        </SidebarHeader>
-        <SidebarContent>
-          {statusGroups.map((group) => (
-            <SidebarGroup key={group.value}>
-              <SidebarGroupLabel className="justify-between">
-                <span>{group.label}</span>
-                <span className="font-normal tabular-nums">{group.pullRequests.length}</span>
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.pullRequests.map((pullRequest) => (
-                    <SidebarMenuItem key={pullRequest.githubId}>
-                      <SidebarMenuButton
-                        isActive={selectedPullRequest?.githubId === pullRequest.githubId}
-                        onClick={() => onSelect(pullRequest)}
-                        size="large"
-                      >
-                        <span className="size-2 shrink-0 rounded-full bg-status-complete" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{pullRequest.title}</span>
-                          <span className="mt-0.5 block truncate text-xs font-normal text-text-secondary">
-                            {pullRequest.repository} #{pullRequest.number}
-                          </span>
-                        </span>
-                        <time className="shrink-0 self-start text-[0.6875rem] font-normal text-text-secondary" dateTime={pullRequest.updatedAt}>
-                          {formatPullRequestTime(pullRequest.updatedAt)}
-                        </time>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
-        </SidebarContent>
-        <SidebarRail />
-      </Sidebar>
+      <PullRequestSidebar
+        filters={filters}
+        notice={notice}
+        onSelect={onSelect}
+        selectedPullRequest={selectedPullRequest}
+        statusGroups={statusGroups}
+      />
       <SidebarInset>
         {selectedPullRequest ? (
           <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
@@ -96,19 +50,14 @@ export function PullRequestWorkspace({
               <div className="flex items-center gap-1 text-sm text-text-secondary">
                 <Tooltip>
                   <TooltipTrigger
-                    render={
-                      <Button
-                        render={
-                          <a
-                            href={`https://github.com/${selectedPullRequest.repository}`}
-                            rel="noreferrer"
-                            target="_blank"
-                          />
-                        }
-                        size="sm"
-                        variant="ghost"
-                      />
-                    }
+                    render={() => (      <a
+                      href={`https://github.com/${selectedPullRequest.repository}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    />)}
+
+
+
                   >
                     {selectedPullRequest.repository}
                   </TooltipTrigger>
