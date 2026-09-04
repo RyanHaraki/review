@@ -18,15 +18,18 @@
     "predev": "pnpm --filter @review/contracts build && pnpm --filter @review/codex-app-server build",
     "dev": "concurrently -k -n server,desktop -c blue,magenta \"pnpm --filter @review/local-server dev\" \"pnpm --filter @review/desktop dev\"",
     "build": "pnpm --filter @review/contracts build && pnpm --filter @review/codex-app-server build && pnpm --filter @review/local-server build && pnpm --filter @review/desktop build",
+    "verify:review": "node .agents/skills/verify-review/control-review.mjs",
     "lint": "oxlint .",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.81.0",
+    "@toon-format/toon": "4.1.1",
     "@types/node": "26.4.1",
     "concurrently": "10.0.5",
     "oxlint": "1.81.0",
+    "playwright-core": "1.62.1",
     "typescript": "6.0.3"
   }
 }

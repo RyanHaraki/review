@@ -11,7 +11,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-  SidebarTrigger,
 } from "../../ui/sidebar";
 import { Button } from "../../ui/button";
 import {

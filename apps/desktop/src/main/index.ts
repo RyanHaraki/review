@@ -21,7 +21,7 @@ import { z } from "zod";
 const execFileAsync = promisify(execFile);
 const codexClient = new CodexAppServerClient();
 let repositoryChoicesPromise: Promise<GitHubRepositoryChoice[]> | null = null;
-const localServerOrigin = "http://127.0.0.1:4319";
+const localServerOrigin = process.env.REVIEW_SERVER_ORIGIN ?? "http://127.0.0.1:4319";
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const repositoryListSchema = z.array(z.string().regex(repositoryPattern)).max(50);
 const githubPullRequestSchema = z.object({
