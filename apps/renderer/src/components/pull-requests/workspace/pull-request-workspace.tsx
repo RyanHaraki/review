@@ -103,7 +103,9 @@ export function PullRequestWorkspace({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Tooltip>
-                    <TooltipTrigger render={<Button size="sm" variant="ghost" />}>
+                    <TooltipTrigger
+                      render={<Button className="!text-text-secondary" size="sm" variant="ghost" />}
+                    >
                       <span className="tabular-nums">
                         {selectedPullRequest.changedFiles.toLocaleString()} {selectedPullRequest.changedFiles === 1 ? "file" : "files"} changed
                       </span>
