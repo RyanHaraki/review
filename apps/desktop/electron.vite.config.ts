@@ -24,6 +24,11 @@ export default defineConfig({
   },
   renderer: {
     root: rendererRoot,
+    resolve: {
+      alias: {
+        "@": join(rendererRoot, "src"),
+      },
+    },
     build: {
       outDir: rendererOut,
       rollupOptions: {
