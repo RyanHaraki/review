@@ -51,12 +51,8 @@ export function PullRequestWorkspace({
           <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
             <div className="w-full">
               <div className="flex items-center gap-1 text-sm text-text-secondary">
-                <Tooltip>
-                  <TooltipTrigger>
-                    {selectedPullRequest.repository}
-                  </TooltipTrigger>
-                  <TooltipContent>Open repo in browser</TooltipContent>
-                </Tooltip>
+                <span>{selectedPullRequest.repository}</span>
+
                 <span>#{selectedPullRequest.number}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-start justify-between gap-4">
@@ -104,7 +100,9 @@ export function PullRequestWorkspace({
                 <div className="flex shrink-0 items-center gap-2">
                   <Tooltip>
                     <TooltipTrigger
-                      render={<Button className="!text-text-secondary" size="sm" variant="ghost" />}
+                      render={
+                        <Button className="!font-normal !text-text-secondary" size="sm" variant="ghost" />
+                      }
                     >
                       <span className="tabular-nums">
                         {selectedPullRequest.changedFiles.toLocaleString()} {selectedPullRequest.changedFiles === 1 ? "file" : "files"} changed
