@@ -1,6 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { z } from "zod";
+
 import { openReviewDatabase } from "./database/client.js";
 import { createReviewServer } from "./server.js";
 
@@ -12,7 +14,10 @@ const reviewDatabase = openReviewDatabase(dataDirectory);
 const server = createReviewServer(reviewDatabase);
 
 server.listen(port, host, () => {
-  console.log(`Review local service listening on http://${host}:${port}`);
+  const address = server.address();
+  const addressResult = z.object({ port: z.number().int().nonnegative() }).safeParse(address);
+  const assignedPort = addressResult.success ? addressResult.data.port : port;
+  console.log(`Review local service listening on http://${host}:${assignedPort}`);
 });
 
 function shutdown() {
@@ -24,4 +29,3 @@ function shutdown() {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-
