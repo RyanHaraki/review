@@ -31,3 +31,4 @@ export async function readPreferences() {
 ## Writing React code
 - Avoid inline functions when writing react if they cause rerenders of child components. `onClick={() => void refresh()}` is an anti-pattern. Generally, you should wrap funcitons in useCallback and values in useMemo when you can.
   - Include a maximum of one component per file. Consider organizing the directory if you see that multiple components are needed for a certain piece of UI
+  - When fetching data (especially in multiple components), prefer writing a custom hook. Do not fetch in a useEffect when the component mounts. 
