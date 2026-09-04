@@ -1,34 +1,22 @@
 import type { PullRequestGroup } from "@review/contracts";
-import { useCallback, useEffect, useState } from "react";
-
-type PullRequestListState = {
-  groups: PullRequestGroup[];
-  loading: boolean;
-};
+import { useQuery } from "@tanstack/react-query";
 
 export function usePullRequests(repositories: string[]) {
-  const [state, setState] = useState<PullRequestListState>({ groups: [], loading: true });
+  const query = useQuery({
+    enabled: repositories.length > 0,
+    queryFn: () => window.reviewDesktop.listPullRequests(repositories),
+    queryKey: ["pullRequests", repositories],
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  });
 
-  const load = useCallback(async () => {
-    setState((current) => ({ ...current, loading: current.groups.length === 0 }));
-    try {
-      const groups = await window.reviewDesktop.listPullRequests(repositories);
-      setState({ groups, loading: false });
-    } catch {
-      setState({
-        groups: repositories.map((repository) => ({
-          repository,
-          state: "unavailable",
-          pullRequests: [],
-        })),
-        loading: false,
-      });
-    }
-  }, [repositories]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  return { ...state, refresh: load };
+  return {
+    // SAFETY: the listPullRequests IPC endpoint always returns PullRequestGroup[] for this query shape.
+    groups: query.data ?? [] as PullRequestGroup[],
+    loading: query.isPending,
+    refresh: query.refetch,
+    refreshing: query.isFetching,
+  };
 }

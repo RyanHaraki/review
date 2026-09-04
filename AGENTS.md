@@ -1,5 +1,5 @@
 ## General guidelines
-- Use pascal case to name folders and files
+- Use kebab case to name folders and files
 - Prefer simpler, extendible solutions over novel ones
 - If you are doing something like updating where data is stored, or making a migration on a model, do NOT leave any legacy fallbacks. If you are asked to update a data source or do a migration, your task is also to fully complete the migration and ensure the old data store is not used.
 
