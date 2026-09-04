@@ -7,7 +7,7 @@ export type PullRequestStatusGroup = {
   value: PullRequestStatus;
 };
 
-export type PullRequestPrototypeProps = {
+export type PullRequestWorkspaceProps = {
   filters: ReactNode;
   notice: ReactNode;
   onSelect(pullRequest: PullRequestSummary): void;

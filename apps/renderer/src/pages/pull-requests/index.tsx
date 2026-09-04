@@ -4,15 +4,11 @@ import type {
   PullRequestSummary,
   ReviewPreferences,
 } from "@review/contracts";
-import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { CompactQueueVariant } from "../../components/pull-requests/Prototype/CompactQueueVariant";
-import { GroupedListVariant } from "../../components/pull-requests/Prototype/GroupedListVariant";
-import { PrototypeSwitcher, type PrototypeVariant } from "../../components/pull-requests/Prototype/PrototypeSwitcher";
-import { PullRequestFilters } from "../../components/pull-requests/Prototype/PullRequestFilters";
-import { PullRequestWorkspaceSkeleton } from "../../components/pull-requests/Prototype/PullRequestWorkspaceSkeleton";
-import { ReviewInboxVariant } from "../../components/pull-requests/Prototype/ReviewInboxVariant";
+import { PullRequestFilters } from "../../components/pull-requests/Workspace/PullRequestFilters";
+import { PullRequestWorkspace } from "../../components/pull-requests/Workspace/PullRequestWorkspace";
+import { PullRequestWorkspaceSkeleton } from "../../components/pull-requests/Workspace/PullRequestWorkspaceSkeleton";
 import { readPreferences, savePreferences } from "../setup/setup-persistence";
 import { useRepositories } from "../setup/use-repositories";
 import { usePullRequests } from "./use-pull-requests";
@@ -36,11 +32,10 @@ const defaultStatusChoices = statusChoices.filter(
 );
 const emptyRepositories: string[] = [];
 
-export function PullRequestsPage({ variant }: { variant: PrototypeVariant }) {
+export function PullRequestsPage() {
   const [preferences, setPreferences] = useState<ReviewPreferences | null>(null);
   const [preferenceError, setPreferenceError] = useState(false);
   const [selectedPullRequestId, setSelectedPullRequestId] = useState<string | null>(null);
-  const navigate = useNavigate();
   const repositories = preferences?.repositories ?? emptyRepositories;
   const selectedStatuses = useMemo(() => {
     if (!preferences) {
@@ -77,15 +72,15 @@ export function PullRequestsPage({ variant }: { variant: PrototypeVariant }) {
     [pullRequests, selectedStatusValues],
   );
   const unavailableRepositoryCount = repositoryGroups.filter((group) => group.state === "unavailable").length;
-  const visiblePullRequestCount = statusGroups.reduce(
-    (count, group) => count + group.pullRequests.length,
-    0,
+  const visiblePullRequests = useMemo(
+    () => statusGroups.flatMap((group) => group.pullRequests),
+    [statusGroups],
   );
   const selectedPullRequest = useMemo(
-    () => pullRequests.find((pullRequest) => pullRequest.githubId === selectedPullRequestId)
-      ?? statusGroups[0]?.pullRequests[0]
+    () => visiblePullRequests.find((pullRequest) => pullRequest.githubId === selectedPullRequestId)
+      ?? visiblePullRequests[0]
       ?? null,
-    [pullRequests, selectedPullRequestId, statusGroups],
+    [selectedPullRequestId, visiblePullRequests],
   );
   const repositorySelectionLabel = `${repositories.length} ${repositories.length === 1 ? "repo" : "repos"} selected`;
   const statusSelectionLabel = `${selectedStatuses.length} ${selectedStatuses.length === 1 ? "status" : "statuses"} selected`;
@@ -124,14 +119,6 @@ export function PullRequestsPage({ variant }: { variant: PrototypeVariant }) {
     setSelectedPullRequestId(pullRequest.githubId);
   }, []);
 
-  const selectVariant = useCallback((nextVariant: PrototypeVariant) => {
-    void navigate({
-      replace: true,
-      search: { variant: nextVariant },
-      to: "/",
-    });
-  }, [navigate]);
-
   const refreshPullRequests = useCallback(() => {
     void refresh();
   }, [refresh]);
@@ -168,22 +155,15 @@ export function PullRequestsPage({ variant }: { variant: PrototypeVariant }) {
       {statusGroups.length === 0 && <p>No pull requests match the selected statuses.</p>}
     </div>
   );
-  const prototypeProps = {
+  const workspaceProps = {
     filters,
     notice,
     onSelect: selectPullRequest,
-    pullRequestCount: visiblePullRequestCount,
+    pullRequestCount: visiblePullRequests.length,
     repositoryCount: repositories.length,
     selectedPullRequest,
     statusGroups,
   };
 
-  return (
-    <>
-      {variant === "A" && <GroupedListVariant {...prototypeProps} />}
-      {variant === "B" && <CompactQueueVariant {...prototypeProps} />}
-      {variant === "C" && <ReviewInboxVariant {...prototypeProps} />}
-      <PrototypeSwitcher onChange={selectVariant} value={variant} />
-    </>
-  );
+  return <PullRequestWorkspace {...workspaceProps} />;
 }

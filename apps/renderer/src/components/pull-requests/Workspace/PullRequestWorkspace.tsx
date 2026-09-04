@@ -17,10 +17,10 @@ import {
 import {
   formatPullRequestTime,
   getReviewStateLabel,
-  type PullRequestPrototypeProps,
-} from "./PullRequestPrototypeTypes";
+  type PullRequestWorkspaceProps,
+} from "./PullRequestWorkspaceTypes";
 
-export function GroupedListVariant({
+export function PullRequestWorkspace({
   filters,
   notice,
   onSelect,
@@ -28,7 +28,7 @@ export function GroupedListVariant({
   repositoryCount,
   selectedPullRequest,
   statusGroups,
-}: PullRequestPrototypeProps) {
+}: PullRequestWorkspaceProps) {
   return (
     <SidebarProvider className="h-[calc(100vh-2.125rem)]" width="24rem">
       <Sidebar collapsible="offcanvas">
@@ -65,7 +65,7 @@ export function GroupedListVariant({
                             {pullRequest.repository} #{pullRequest.number}
                           </span>
                         </span>
-                        <time className="shrink-0 self-start text-[0.6875rem] font-normal text-text-tertiary" dateTime={pullRequest.updatedAt}>
+                        <time className="shrink-0 self-start text-[0.6875rem] font-normal text-text-secondary" dateTime={pullRequest.updatedAt}>
                           {formatPullRequestTime(pullRequest.updatedAt)}
                         </time>
                       </SidebarMenuButton>
