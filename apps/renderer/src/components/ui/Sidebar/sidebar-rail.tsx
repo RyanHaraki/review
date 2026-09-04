@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { useSidebar } from "./UseSidebar";
+import { useSidebar } from "./use-sidebar";
 
 export function SidebarRail(props: ComponentProps<"button">) {
   const { toggleSidebar } = useSidebar();

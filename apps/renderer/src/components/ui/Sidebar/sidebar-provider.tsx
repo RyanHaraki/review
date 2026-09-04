@@ -7,8 +7,8 @@ import {
   type CSSProperties,
 } from "react";
 
-import { SidebarContext } from "./SidebarContext";
-import { sidebarClasses } from "./SidebarUtilities";
+import { SidebarContext } from "./sidebar-context";
+import { sidebarClasses } from "./sidebar-utilities";
 
 type SidebarStyle = CSSProperties & {
   "--sidebar-width": string;

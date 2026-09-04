@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
-import { sidebarClasses } from "./SidebarUtilities";
-import { useSidebar } from "./UseSidebar";
+import { sidebarClasses } from "./sidebar-utilities";
+import { useSidebar } from "./use-sidebar";
 
 export function Sidebar({
   children,

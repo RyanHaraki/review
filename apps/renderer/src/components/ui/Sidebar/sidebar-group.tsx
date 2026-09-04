@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { sidebarClasses } from "./SidebarUtilities";
+import { sidebarClasses } from "./sidebar-utilities";
 
 export function SidebarGroup({ className, ...props }: ComponentProps<"section">) {
   return (

@@ -12,20 +12,18 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
-} from "../../ui/Sidebar";
+} from "../../ui/sidebar";
 import { Button } from "../../ui/button";
 import {
   formatPullRequestTime,
   getReviewStateLabel,
   type PullRequestWorkspaceProps,
-} from "./PullRequestWorkspaceTypes";
+} from "./pull-request-workspace-types";
 
 export function PullRequestWorkspace({
   filters,
   notice,
   onSelect,
-  _pullRequestCount,
-  _repositoryCount,
   selectedPullRequest,
   statusGroups,
 }: PullRequestWorkspaceProps) {

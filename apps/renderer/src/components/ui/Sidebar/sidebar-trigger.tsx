@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 import { Button } from "../button";
-import { useSidebar } from "./UseSidebar";
+import { useSidebar } from "./use-sidebar";
 
 export function SidebarTrigger({ className, ...props }: ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar();

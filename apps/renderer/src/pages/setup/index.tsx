@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CodexStep, GitHubStep } from "../../components/setup/connection-steps";
 import { RepositoryStep } from "../../components/setup/repository-step";
 import { Button } from "../../components/ui/button";
-import { useUserPreferences } from "../../Hooks/UseUserPreferences";
+import { useUserPreferences } from "../../hooks/use-user-preferences";
 import { useRepositories } from "./use-repositories";
 import { useSetupStatus } from "./use-setup-status";
 

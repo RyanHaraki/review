@@ -5,10 +5,10 @@ import type {
 } from "@review/contracts";
 import { useCallback, useMemo, useState } from "react";
 
-import { PullRequestFilters } from "../../components/pull-requests/Workspace/PullRequestFilters";
-import { PullRequestWorkspace } from "../../components/pull-requests/Workspace/PullRequestWorkspace";
-import { PullRequestWorkspaceSkeleton } from "../../components/pull-requests/Workspace/PullRequestWorkspaceSkeleton";
-import { useUserPreferences } from "../../Hooks/UseUserPreferences";
+import { PullRequestFilters } from "../../components/pull-requests/Workspace/pull-request-filters";
+import { PullRequestWorkspace } from "../../components/pull-requests/Workspace/pull-request-workspace";
+import { PullRequestWorkspaceSkeleton } from "../../components/pull-requests/Workspace/pull-request-workspace-skeleton";
+import { useUserPreferences } from "../../hooks/use-user-preferences";
 import { useRepositories } from "../setup/use-repositories";
 import { usePullRequests } from "./use-pull-requests";
 

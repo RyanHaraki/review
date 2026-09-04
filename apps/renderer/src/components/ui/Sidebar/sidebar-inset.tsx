@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { sidebarClasses } from "./SidebarUtilities";
+import { sidebarClasses } from "./sidebar-utilities";
 
 export function SidebarInset({ className, ...props }: ComponentProps<"main">) {
   return (

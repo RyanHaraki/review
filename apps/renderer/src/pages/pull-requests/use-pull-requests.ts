@@ -1,4 +1,3 @@
-import type { PullRequestGroup } from "@review/contracts";
 import { useQuery } from "@tanstack/react-query";
 
 export function usePullRequests(repositories: string[]) {
@@ -13,8 +12,7 @@ export function usePullRequests(repositories: string[]) {
   });
 
   return {
-    // SAFETY: the listPullRequests IPC endpoint always returns PullRequestGroup[] for this query shape.
-    groups: query.data ?? [] as PullRequestGroup[],
+    groups: query.data ?? [],
     loading: query.isPending,
     refresh: query.refetch,
     refreshing: query.isFetching,
