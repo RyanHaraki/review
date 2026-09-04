@@ -1,7 +1,6 @@
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -25,8 +24,8 @@ export function PullRequestWorkspace({
   filters,
   notice,
   onSelect,
-  pullRequestCount,
-  repositoryCount,
+  _pullRequestCount,
+  _repositoryCount,
   selectedPullRequest,
   statusGroups,
 }: PullRequestWorkspaceProps) {
