@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 export function usePullRequests(repositories: string[]) {
   const query = useQuery({
     enabled: repositories.length > 0,
+    placeholderData: keepPreviousData,
     queryFn: () => window.reviewDesktop.listPullRequests(repositories),
     queryKey: ["pullRequests", repositories],
     refetchInterval: 60_000,
