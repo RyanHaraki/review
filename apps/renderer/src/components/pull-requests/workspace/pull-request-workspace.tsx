@@ -12,6 +12,14 @@ import {
 } from "./pull-request-workspace-types";
 import { GithubIcon } from "../../icons/github-icon";
 import { PullRequestSidebar } from "./pull-request-sidebar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
+
+const reviewTabs = [
+  { label: "Overview", value: "overview" },
+  { label: "Diffs", value: "diffs" },
+  { label: "Guide", value: "guide" },
+] as const;
+
 
 export function PullRequestWorkspace({
   filters,
@@ -20,7 +28,6 @@ export function PullRequestWorkspace({
   selectedPullRequest,
   statusGroups,
 }: PullRequestWorkspaceProps) {
-
   const copyBranchName = useCallback((branchName: string) => {
     void navigator.clipboard.writeText(branchName).catch(() => undefined);
   }, []);
@@ -119,12 +126,39 @@ export function PullRequestWorkspace({
                   </time>
                 </div>
               </div>
-              <section className="mt-6 min-h-80 w-full rounded-xl border border-border bg-surface p-6">
-                <h3 className="text-sm font-semibold">Review</h3>
-                <p className="mt-2 text-sm leading-6 text-text-secondary">
-                  Review content, changed files, and discussion will appear in this pane.
-                </p>
-              </section>
+              <Tabs className="mt-6" defaultValue="overview">
+                <TabsList aria-label="Pull request sections">
+                  {reviewTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <TabsContent className="pt-4" value="overview">
+                  <section className="min-h-80 w-full rounded-xl border border-border bg-surface p-6">
+                    <h3 className="text-sm font-semibold">Review</h3>
+                    <p className="mt-2 text-sm leading-6 text-text-secondary">
+                      Review content, changed files, and discussion will appear in this pane.
+                    </p>
+                  </section>
+                </TabsContent>
+                <TabsContent className="pt-4" value="diffs">
+                  <section className="min-h-80 w-full rounded-xl border border-border bg-surface p-6">
+                    <h3 className="text-sm font-semibold">Diffs</h3>
+                    <p className="mt-2 text-sm leading-6 text-text-secondary">
+                      Changed files will appear in this pane.
+                    </p>
+                  </section>
+                </TabsContent>
+                <TabsContent className="pt-4" value="guide">
+                  <section className="min-h-80 w-full rounded-xl border border-border bg-surface p-6">
+                    <h3 className="text-sm font-semibold">Guide</h3>
+                    <p className="mt-2 text-sm leading-6 text-text-secondary">
+                      Review guidance will appear in this pane.
+                    </p>
+                  </section>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         ) : (
