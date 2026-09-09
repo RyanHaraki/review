@@ -1,3 +1,6 @@
+import type { PullRequestDetailsBridge } from "./pull-request-details.js";
+export * from "./pull-request-details.js";
+
 export type Repository = {
   id: string;
   githubId: number;
@@ -152,7 +155,7 @@ export type PullRequestCacheWrite = {
   groups: PullRequestGroup[];
 };
 
-export type DesktopBridge = {
+export type DesktopBridge = PullRequestDetailsBridge & {
   getElectronVersion(): string;
   getPlatform(): string;
   getSetupStatus(): Promise<SetupStatus>;

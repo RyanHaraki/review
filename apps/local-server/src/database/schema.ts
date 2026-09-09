@@ -142,3 +142,50 @@ export const migration005 = `
 
   DELETE FROM sync_state WHERE key LIKE 'pull-requests:%';
 `;
+
+export const migration006 = `
+  CREATE TABLE IF NOT EXISTS pull_request_drafts (
+    id TEXT PRIMARY KEY,
+    repository TEXT NOT NULL,
+    pull_request_number INTEGER NOT NULL,
+    target_json TEXT NOT NULL,
+    body TEXT NOT NULL,
+    revision INTEGER NOT NULL CHECK(revision > 0),
+    status TEXT NOT NULL CHECK(status IN ('draft', 'submitting', 'submitted', 'uncertain')),
+    error TEXT,
+    remote_url TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(repository, pull_request_number, id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pull_request_drafts_pull_request
+    ON pull_request_drafts(repository, pull_request_number, updated_at DESC);
+
+  CREATE TABLE IF NOT EXISTS pull_request_detail_documents (
+    repository TEXT NOT NULL,
+    pull_request_number INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('overview', 'diff')),
+    revision_key TEXT NOT NULL,
+    content_json TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY(repository, pull_request_number, kind, revision_key)
+  );
+
+  UPDATE pull_request_drafts
+  SET status = 'uncertain',
+      error = COALESCE(error, 'Submission outcome needs reconciliation.'),
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+  WHERE status = 'submitting';
+`;
+
+export const migration007 = `
+  CREATE TABLE pull_request_reviewed_files (
+    repository TEXT NOT NULL,
+    pull_request_number INTEGER NOT NULL,
+    base_sha TEXT NOT NULL,
+    head_sha TEXT NOT NULL,
+    path TEXT NOT NULL,
+    PRIMARY KEY(repository, pull_request_number, base_sha, head_sha, path)
+  );
+`;
