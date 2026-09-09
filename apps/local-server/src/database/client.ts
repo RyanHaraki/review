@@ -8,6 +8,8 @@ import {
   migration003,
   migration004,
   migration005,
+  migration006,
+  migration007,
 } from "./schema.js";
 
 export type ReviewDatabase = {
@@ -30,7 +32,7 @@ export function openReviewDatabase(dataDirectory: string): ReviewDatabase {
   );
 
   const migration = database.prepare("SELECT version FROM schema_migrations WHERE version = ?");
-  const migrations = [migration001, migration002, migration003, migration004, migration005];
+  const migrations = [migration001, migration002, migration003, migration004, migration005, migration006, migration007];
 
   for (const [index, sql] of migrations.entries()) {
     const version = index + 1;
@@ -49,6 +51,14 @@ export function openReviewDatabase(dataDirectory: string): ReviewDatabase {
       throw error;
     }
   }
+
+  database.exec(`
+    UPDATE pull_request_drafts
+    SET status = 'uncertain',
+        error = COALESCE(error, 'Submission outcome needs reconciliation.'),
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE status = 'submitting';
+  `);
 
   return {
     database,

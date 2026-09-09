@@ -5,7 +5,7 @@ import {
 import { Button } from "../../ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
-import { useCallback } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import {
   formatPullRequestTime,
   type PullRequestWorkspaceProps,
@@ -13,6 +13,9 @@ import {
 import { GithubIcon } from "../../icons/github-icon";
 import { PullRequestSidebar } from "./pull-request-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
+import { PullRequestOverview } from "./pull-request-overview";
+
+const PullRequestDiffs = lazy(() => import("./pull-request-diffs").then((module) => ({ default: module.PullRequestDiffs })));
 
 const reviewTabs = [
   { label: "Overview", value: "overview" },
@@ -28,6 +31,12 @@ export function PullRequestWorkspace({
   selectedPullRequest,
   statusGroups,
 }: PullRequestWorkspaceProps) {
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const pullRequestKey = useMemo(() => selectedPullRequest
+    ? { repository: selectedPullRequest.repository, number: selectedPullRequest.number }
+    : null, [selectedPullRequest?.repository, selectedPullRequest?.number]);
+  const openDiffs = useCallback(() => setActiveTab("diffs"), []);
+  const changeTab = useCallback((value: string) => setActiveTab(value), []);
   const copyBranchName = useCallback((branchName: string) => {
     void navigator.clipboard.writeText(branchName).catch(() => undefined);
   }, []);
@@ -108,7 +117,7 @@ export function PullRequestWorkspace({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <Button className="!font-normal !text-text-secondary" size="sm" variant="ghost" />
+                        <Button className="!font-normal !text-text-secondary" size="sm" variant="ghost" onClick={openDiffs} />
                       }
                     >
                       <span className="tabular-nums">
@@ -126,7 +135,7 @@ export function PullRequestWorkspace({
                   </time>
                 </div>
               </div>
-              <Tabs className="mt-6" defaultValue="overview">
+              <Tabs className="mt-6" value={activeTab} onValueChange={changeTab}>
                 <TabsList aria-label="Pull request sections">
                   {reviewTabs.map((tab) => (
                     <TabsTrigger key={tab.value} value={tab.value}>
@@ -135,23 +144,15 @@ export function PullRequestWorkspace({
                   ))}
                 </TabsList>
                 <TabsContent className="pt-4" value="overview">
-                  <section className="min-h-80 w-full rounded-xl border border-border bg-surface p-6">
-                    <h3 className="text-sm font-semibold">Review</h3>
-                    <p className="mt-2 text-sm leading-6 text-text-secondary">
-                      Review content, changed files, and discussion will appear in this pane.
-                    </p>
-                  </section>
+                  {pullRequestKey && <PullRequestOverview key={`${pullRequestKey.repository}:${pullRequestKey.number}`} pullRequestKey={pullRequestKey} />}
                 </TabsContent>
                 <TabsContent className="pt-4" value="diffs">
-                  <section className="min-h-80 w-full rounded-xl border border-border bg-surface p-6">
-                    <h3 className="text-sm font-semibold">Diffs</h3>
-                    <p className="mt-2 text-sm leading-6 text-text-secondary">
-                      Changed files will appear in this pane.
-                    </p>
-                  </section>
+                  <Suspense fallback={<p className="py-12 text-sm text-text-secondary" role="status">Loading diff viewer…</p>}>
+                    {pullRequestKey && <PullRequestDiffs key={`${pullRequestKey.repository}:${pullRequestKey.number}`} pullRequestKey={pullRequestKey} />}
+                  </Suspense>
                 </TabsContent>
                 <TabsContent className="pt-4" value="guide">
-                  <section className="min-h-80 w-full rounded-xl border border-border bg-surface p-6">
+                  <section className="min-h-80 w-full py-6">
                     <h3 className="text-sm font-semibold">Guide</h3>
                     <p className="mt-2 text-sm leading-6 text-text-secondary">
                       Review guidance will appear in this pane.

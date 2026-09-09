@@ -79,7 +79,7 @@ export function PullRequestWorkspaceSkeleton() {
               <div className="h-3 w-2 shrink-0 animate-pulse rounded bg-surface-selected" />
               <div className="h-4 w-24 shrink-0 animate-pulse rounded bg-surface-selected" />
             </div>
-            <div className="mt-6 min-h-80 w-full rounded-xl border border-border bg-surface p-6">
+            <div className="mt-6 min-h-80 w-full py-6">
               <div className="h-4 w-12 animate-pulse rounded bg-surface-selected" />
               <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-surface-selected" />
               <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-surface-selected" />

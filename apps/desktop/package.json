@@ -8,7 +8,8 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc --ignoreConfig --types node --target es2023 --module nodenext --moduleResolution nodenext --esModuleInterop --skipLibCheck --outDir out/tests src/main/pull-request-submissions.test.ts && node --test out/tests/pull-request-submissions.test.js"
   },
   "dependencies": {
     "@review/codex-app-server": "workspace:*",
