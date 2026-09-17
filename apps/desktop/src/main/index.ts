@@ -1,3 +1,4 @@
+import { registerPullRequestDetails } from "./pull-request-details.js";
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -22,6 +23,7 @@ const execFileAsync = promisify(execFile);
 const codexClient = new CodexAppServerClient();
 let repositoryChoicesPromise: Promise<GitHubRepositoryChoice[]> | null = null;
 const localServerOrigin = process.env.REVIEW_SERVER_ORIGIN ?? "http://127.0.0.1:4319";
+registerPullRequestDetails(localServerOrigin);
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const repositoryListSchema = z.array(z.string().regex(repositoryPattern)).max(50);
 const githubPullRequestSchema = z.object({
@@ -370,7 +372,7 @@ function createMainWindow() {
     minWidth: 840,
     minHeight: 620,
     show: false,
-    backgroundColor: "#f7f7f5",
+    backgroundColor: "#f9fafa",
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 12, y: 10 },
     webPreferences: {

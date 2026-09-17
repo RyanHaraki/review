@@ -23,6 +23,10 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
   },
   renderer: {
+    worker: {
+      format: "es",
+      rollupOptions: { output: { inlineDynamicImports: true } },
+    },
     root: rendererRoot,
     resolve: {
       alias: {
