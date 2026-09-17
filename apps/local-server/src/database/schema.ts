@@ -189,3 +189,15 @@ export const migration007 = `
     PRIMARY KEY(repository, pull_request_number, base_sha, head_sha, path)
   );
 `;
+
+export const migration008 = `
+  CREATE TABLE IF NOT EXISTS review_guides (
+    repository TEXT NOT NULL,
+    pull_request_number INTEGER NOT NULL,
+    base_sha TEXT NOT NULL,
+    head_sha TEXT NOT NULL,
+    state_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(repository, pull_request_number, base_sha, head_sha)
+  );
+`;

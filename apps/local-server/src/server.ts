@@ -19,6 +19,7 @@ import {
   savePullRequestDraftSchema,
 } from "@review/contracts";
 import { z } from "zod";
+import { guideKeySchema, guideRecordSchema, type GuideState } from "@review/contracts";
 
 import type { ReviewDatabase } from "./database/client.js";
 import { readPullRequestCache, writePullRequestCache } from "./database/pull-request-cache.js";
@@ -35,6 +36,7 @@ import {
   type DetailDocument,
 } from "./database/pull-request-drafts.js";
 import { readUserPreferences, writeUserPreferences } from "./database/user-preferences.js";
+import { readReviewGuide, writeReviewGuide } from "./database/review-guides.js";
 
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const repositoryRequestSchema = z.object({
@@ -61,6 +63,7 @@ type JsonResponse =
   | string[]
   | ReviewPreferences
   | { content: DetailDocument | null; fetchedAt: string | null }
+  | GuideState
   | { error: string }
   | { ok: true };
 
@@ -89,13 +92,13 @@ const draftFinishSchema = draftReferenceSchema.extend({
   remoteUrl: z.string().url().nullable(),
 });
 
-function readBody(request: IncomingMessage): Promise<string> {
+function readBody(request: IncomingMessage, maxBytes = 1_000_000): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
     request.on("data", (chunk: Buffer) => {
       size += chunk.length;
-      if (size > 1_000_000) {
+      if (size > maxBytes) {
         reject(new Error("Request body is too large."));
         request.destroy();
         return;
@@ -258,6 +261,14 @@ async function handlePullRequestDetailsRequest(
 
 export function createReviewServer(reviewDatabase: ReviewDatabase) {
   return createServer(async (request, response) => {
+    if (request.url?.startsWith("/review-guides")) {
+      try {
+        await handleGuideRequest(request, response, reviewDatabase);
+      } catch {
+        sendJson(response, 400, { error: "Unable to read or save the review guide." });
+      }
+      return;
+    }
     if (request.method === "GET" && request.url === "/health") {
       const body = JSON.stringify({
         ok: true,
@@ -320,4 +331,19 @@ export function createReviewServer(reviewDatabase: ReviewDatabase) {
 
     sendJson(response, 404, { error: "Not found" });
   });
+}
+
+async function handleGuideRequest(request: IncomingMessage, response: ServerResponse, database: ReviewDatabase): Promise<void> {
+  if (request.method === "POST" && request.url === "/review-guides/read") {
+    const key = guideKeySchema.parse(JSON.parse(await readBody(request)));
+    sendJson(response, 200, readReviewGuide(database, key));
+    return;
+  }
+  if (request.method === "PUT" && request.url === "/review-guides") {
+    const record = guideRecordSchema.parse(JSON.parse(await readBody(request, 20_000_000)));
+    writeReviewGuide(database, record.key, record.state);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+  sendJson(response, 404, { error: "Not found" });
 }

@@ -10,6 +10,7 @@ import {
   migration005,
   migration006,
   migration007,
+  migration008,
 } from "./schema.js";
 
 export type ReviewDatabase = {
@@ -32,10 +33,18 @@ export function openReviewDatabase(dataDirectory: string): ReviewDatabase {
   );
 
   const migration = database.prepare("SELECT version FROM schema_migrations WHERE version = ?");
-  const migrations = [migration001, migration002, migration003, migration004, migration005, migration006, migration007];
+  const migrations = [
+    { version: 1, sql: migration001 },
+    { version: 2, sql: migration002 },
+    { version: 3, sql: migration003 },
+    { version: 4, sql: migration004 },
+    { version: 5, sql: migration005 },
+    { version: 6, sql: migration006 },
+    { version: 7, sql: migration007 },
+    { version: 8, sql: migration008 },
+  ];
 
-  for (const [index, sql] of migrations.entries()) {
-    const version = index + 1;
+  for (const { version, sql } of migrations) {
     if (migration.get(version) !== undefined) {
       continue;
     }

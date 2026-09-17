@@ -1,5 +1,7 @@
 import type { PullRequestDetailsBridge } from "./pull-request-details.js";
 export * from "./pull-request-details.js";
+import type { GuideKey, GuideState } from "./review-guide.js";
+export * from "./review-guide.js";
 
 export type Repository = {
   id: string;
@@ -156,6 +158,8 @@ export type PullRequestCacheWrite = {
 };
 
 export type DesktopBridge = PullRequestDetailsBridge & {
+  readReviewGuide(key: GuideKey): Promise<GuideState>;
+  generateReviewGuide(key: GuideKey): Promise<GuideState>;
   getElectronVersion(): string;
   getPlatform(): string;
   getSetupStatus(): Promise<SetupStatus>;

@@ -7,8 +7,60 @@ import test from "node:test";
 
 import { openReviewDatabase } from "./client.js";
 import { readPullRequestCache, writePullRequestCache } from "./pull-request-cache.js";
-import { migration001, migration002, migration003, migration004 } from "./schema.js";
+import { migration001, migration002, migration003, migration004, migration005, migration006, migration007 } from "./schema.js";
 import { readUserPreferences, writeUserPreferences } from "./user-preferences.js";
+import { readReviewGuide, writeReviewGuide } from "./review-guides.js";
+
+test("adds guide storage when review workflow migrations are already recorded", () => {
+  const directory = mkdtempSync(join(tmpdir(), "review-existing-database-"));
+  const key = { repository: "example/review", number: 1, baseSha: "a".repeat(40), headSha: "b".repeat(40) };
+  try {
+    const database = new DatabaseSync(join(directory, "review.sqlite"));
+    for (const sql of [migration001, migration002, migration003, migration004, migration005, migration006, migration007]) {
+      database.exec(sql);
+    }
+    for (let version = 1; version <= 7; version += 1) {
+      database.prepare("INSERT INTO schema_migrations VALUES (?, ?)").run(version, "2026-09-07T00:00:00Z");
+    }
+    database.exec("INSERT INTO sync_state VALUES ('keep-existing-data', '{}', '2026-09-07T00:00:00Z')");
+    database.close();
+
+    const upgraded = openReviewDatabase(directory);
+    try {
+      assert.deepEqual(readReviewGuide(upgraded, key), { kind: "missing" });
+      writeReviewGuide(upgraded, key, { kind: "generating", startedAt: "2026-09-17T00:00:00Z" });
+      assert.equal(readReviewGuide(upgraded, key).kind, "generating");
+      assert.equal(upgraded.database.prepare("SELECT value_json FROM sync_state WHERE key = 'keep-existing-data'").get()?.value_json, "{}");
+    } finally {
+      upgraded.close();
+    }
+    const reopened = openReviewDatabase(directory);
+    try {
+      assert.equal(readReviewGuide(reopened, key).kind, "generating");
+    } finally {
+      reopened.close();
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("saved guides survive reopening and match both commit SHAs", () => {
+  const directory = mkdtempSync(join(tmpdir(), "review-guide-storage-"));
+  const key = { repository: "example/review", number: 1, baseSha: "a".repeat(40), headSha: "b".repeat(40) };
+  try {
+    const first = openReviewDatabase(directory);
+    writeReviewGuide(first, key, { kind: "ready", guide: { chapters: [], generatedFiles: [], files: [], generatedAt: "2026-09-17T00:00:00Z" } });
+    first.close();
+    const reopened = openReviewDatabase(directory);
+    assert.equal(readReviewGuide(reopened, key).kind, "ready");
+    assert.equal(readReviewGuide(reopened, { ...key, baseSha: "c".repeat(40) }).kind, "missing");
+    assert.equal(readReviewGuide(reopened, { ...key, headSha: "d".repeat(40) }).kind, "missing");
+    reopened.close();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("creates the initial SQLite schema", () => {
   const directory = mkdtempSync(join(tmpdir(), "review-database-"));
