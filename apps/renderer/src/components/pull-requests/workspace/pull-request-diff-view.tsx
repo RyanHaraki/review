@@ -12,13 +12,15 @@ import { useReviewedFiles } from "../../../pages/pull-requests/use-reviewed-file
 import { parseDiffFile } from "./diff-model";
 import { DiffFileHeader } from "./diff-file-header";
 import { DiffCommentsSidebar } from "./diff-comments-sidebar";
+import { fileDiffOptions, fileDiffCardCSS } from "../diff/file-diff-options";
 
 const poolOptions = { poolSize: 2, workerFactory: () => new DiffsWorker() };
-const highlighterOptions = { theme: "pierre-light" };
+const highlighterOptions = { theme: fileDiffOptions.theme };
 const options: CodeViewReactOptions = {
-  theme: "pierre-light", themeType: "light", diffStyle: "unified", stickyHeaders: true,
-  enableLineSelection: true, overflow: "scroll", layout: { gap: 24, paddingTop: 0, paddingBottom: 24 },
-  unsafeCSS: ":host { --diffs-font-size: 12px; --diffs-line-height: 22px; --diffs-bg: #f9fafa; }",
+  ...fileDiffOptions,
+  stickyHeaders: true,
+  enableLineSelection: true, layout: { gap: 24, paddingTop: 0, paddingBottom: 24 },
+  unsafeCSS: fileDiffOptions.unsafeCSS + fileDiffCardCSS,
 };
 type Props = {
   pullRequestKey: PullRequestKey; diff: PullRequestDiff; threads: PullRequestThread[];
