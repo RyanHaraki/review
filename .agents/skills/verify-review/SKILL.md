@@ -74,7 +74,7 @@ Stable handles include:
 - Setup: `Get started with Review`, `GitHub`, `Sign in with GitHub`, `Codex`, `Repositories`, `Get started`, `Check again`, and `Connect Codex`.
 - Pull requests: `Pull requests`, `Filter pull requests by repository`, `Filter pull requests by status`, `Refresh`, pull-request buttons containing the title and repository, and `Open in GitHub`.
 
-Exercise the user path. For the pull-request proof, wait for the list to load, click a pull-request button, and confirm the detail pane shows the same title, repository, author, review state, and change counts. For setup, confirm all three steps before using `Get started`; do not call IPC methods directly.
+Exercise the user path. For the pull-request proof, wait for the list to load, click a pull-request button, and confirm the detail pane shows the same title, repository, author, review state, and change counts. For setup, confirm all four steps before using `Get started`; do not call IPC methods directly.
 
 ## Evidence
 

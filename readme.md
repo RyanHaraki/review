@@ -42,7 +42,7 @@ The local service listens on `127.0.0.1:4319` by default. Set `REVIEW_DATA_DIR` 
 
 ## GitHub sign-in
 
-Review uses the `diligent-review` GitHub App and OAuth Device Flow. In setup, choose **Sign in with GitHub**, enter the displayed code on GitHub, and authorize Review. Install the GitHub App on the repositories you want to review, then refresh the repository list. An organization owner may need to approve the installation.
+Review uses the `diligent-review` GitHub App and OAuth Device Flow. Setup has four steps: sign in to GitHub, connect Codex, install the GitHub App, and choose repositories. Enter the displayed code on GitHub to authorize Review. In step 3, install the app in your organization or personal account and grant repository access. Return to Review and use **Check access**. Step 4 then lets you choose repositories. An organization owner may need to approve the installation.
 
 The app registration requires these repository permissions:
 

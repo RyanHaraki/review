@@ -1,6 +1,6 @@
 type SetupIconProps = {
   complete: boolean;
-  step: 1 | 2 | 3;
+  step: 1 | 2 | 3 | 4;
 };
 
 export function SetupIcon({ complete, step }: SetupIconProps) {

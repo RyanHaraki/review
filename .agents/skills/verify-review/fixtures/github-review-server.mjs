@@ -69,6 +69,7 @@ async function handle(request, response) {
   if (state.auth.revoked || authorization !== `Bearer fixture-token-${accountId}`) return json({ message: "Bad credentials" }, 401);
   if (endpoint === "user" && method === "GET") return json({ id: accountId, login: state.auth.login, avatar_url: null });
   const pathWithoutQuery = endpoint.split("?")[0];
+  if (pathWithoutQuery === "user/installations" && method === "GET" && state.auth.installed === false) return json({ total_count: 0, installations: [] });
   if (pathWithoutQuery === "user/installations" && method === "GET") return json({ total_count: 1, installations: [{ id: 7, account: { id: accountId, login: state.auth.login } }] });
   if (pathWithoutQuery === "user/installations/7/repositories" && method === "GET") return json({ total_count: 1, repositories: [{ id: 99, full_name: repository, private: false, archived: false, permissions: { pull: true, push: true } }] });
   function record(kind, payload) { state.mutations.push({ kind, payload, at: new Date().toISOString() }); save(state); }
