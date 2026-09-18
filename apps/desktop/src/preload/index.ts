@@ -10,6 +10,17 @@ const desktopBridge: DesktopBridge = {
   getPlatform: () => process.platform,
   getSetupStatus: () => ipcRenderer.invoke("setup:read"),
   connectCodex: () => ipcRenderer.invoke("setup:connect-codex"),
+  readGitHubSession: () => ipcRenderer.invoke("github:session"),
+  readGitHubProfile: () => ipcRenderer.invoke("github:profile"),
+  signInGitHub: () => ipcRenderer.invoke("github:sign-in"),
+  cancelGitHubSignIn: () => ipcRenderer.invoke("github:cancel"),
+  signOutGitHub: () => ipcRenderer.invoke("github:sign-out"),
+  openGitHubInstallations: () => ipcRenderer.invoke("github:install"),
+  onGitHubSessionChanged: (listener) => {
+    const receive = (_event: Electron.IpcRendererEvent, status: Parameters<typeof listener>[0]) => listener(status);
+    ipcRenderer.on("github:changed", receive);
+    return () => ipcRenderer.removeListener("github:changed", receive);
+  },
   readPreferences: () => ipcRenderer.invoke("preferences:read"),
   savePreferences: (preferences) =>
     ipcRenderer.invoke("preferences:save", preferences),

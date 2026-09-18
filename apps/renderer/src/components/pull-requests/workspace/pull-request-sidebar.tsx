@@ -1,8 +1,10 @@
 import type { PullRequestWorkspaceProps } from "./pull-request-workspace-types";
+import { AccountMenu } from "./account-menu";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -72,6 +74,9 @@ export function PullRequestSidebar({
           </SidebarGroup>
         ))}
       </SidebarContent>
+      <SidebarFooter>
+        <AccountMenu />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

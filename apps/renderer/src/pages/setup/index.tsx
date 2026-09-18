@@ -2,24 +2,15 @@ import type { GitHubRepositoryChoice } from "@review/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
-import { CodexStep, GitHubStep } from "../../components/setup/connection-steps";
+import { CodexStep } from "../../components/setup/codex-step";
+import { InstallationStep } from "../../components/setup/installation-step";
+import { GitHubStep } from "../../components/setup/github-step";
+import { SetupProgress } from "../../components/setup/setup-progress";
 import { RepositoryStep } from "../../components/setup/repository-step";
 import { Button } from "../../components/ui/button";
 import { useUserPreferences } from "../../hooks/use-user-preferences";
 import { useRepositories } from "./use-repositories";
 import { useSetupStatus } from "./use-setup-status";
-
-function SetupProgress({ completedSteps }: { completedSteps: number }) {
-  const className = completedSteps === 3
-    ? "size-3.5 rounded-full [--setup-progress:100%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]"
-    : completedSteps === 2
-      ? "size-3.5 rounded-full [--setup-progress:66.667%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]"
-      : completedSteps === 1
-        ? "size-3.5 rounded-full [--setup-progress:33.333%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]"
-        : "size-3.5 rounded-full [--setup-progress:0%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]";
-
-  return <span aria-hidden="true" className={className} />;
-}
 
 export function SetupPage() {
   const [savingPreferences, setSavingPreferences] = useState(false);
@@ -36,6 +27,7 @@ export function SetupPage() {
   } = useSetupStatus();
   const githubConnected = setup?.github.state === "connected";
   const repositorySetup = useRepositories(githubConnected);
+  const installationComplete = githubConnected && !repositorySetup.error && repositorySetup.choices.length > 0;
   const selectedRepositories = selectedRepositoryValues.map(
     (value) => repositorySetup.choices.find((repository) => repository.value === value)
       ?? { value, label: value, isPrivate: false },
@@ -88,7 +80,8 @@ export function SetupPage() {
   const completedSteps = setup
     ? Number(setup.github.state === "connected")
       + Number(setup.codex.state === "connected")
-      + Number(selectedRepositoryValues.length > 0)
+      + Number(installationComplete)
+      + Number(installationComplete && selectedRepositoryValues.some((value) => repositorySetup.choices.some((repository) => repository.value === value)))
     : 0;
   return (
     <main className="mx-auto flex min-h-[calc(100vh-2.125rem)] w-full max-w-3xl flex-col justify-center gap-5 px-5 py-8 sm:px-8 sm:py-10">
@@ -107,16 +100,12 @@ export function SetupPage() {
               Setup
             </h2>
             <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
-              <span>{setup ? `${completedSteps}/3` : "Checking"}</span>
+              <span>{setup ? `${completedSteps}/4` : "Checking"}</span>
               <SetupProgress completedSteps={completedSteps} />
             </div>
           </div>
           <ol className="relative z-10 mt-2.5 grid gap-0.5">
-            <GitHubStep
-              status={setup?.github ?? null}
-              checking={checking}
-              refresh={refresh}
-            />
+            <GitHubStep />
             <CodexStep
               status={setup?.codex ?? null}
               checking={checking}
@@ -124,10 +113,17 @@ export function SetupPage() {
               connect={connectCodex}
               refresh={refresh}
             />
+            <InstallationStep
+              githubConnected={githubConnected}
+              complete={installationComplete}
+              loading={repositorySetup.loading}
+              error={repositorySetup.error}
+              refresh={repositorySetup.refresh}
+            />
             <RepositoryStep
               choices={repositorySetup.choices}
               selected={selectedRepositories}
-              githubConnected={githubConnected}
+              installationComplete={installationComplete}
               loading={repositorySetup.loading}
               error={repositorySetup.error}
               onChange={selectRepositories}
@@ -138,7 +134,7 @@ export function SetupPage() {
             <Button
               size="lg"
               variant="default"
-              disabled={!preferences || completedSteps < 3 || savingPreferences}
+              disabled={!preferences || completedSteps < 4 || savingPreferences}
               onClick={finishSetup}
             >
               Get started
@@ -158,7 +154,7 @@ export function SetupPage() {
         ) : checking || !setup ? (
           <>Checking your connections.</>
         ) : (
-          <>{completedSteps} of 3 setup steps complete.</>
+          <>{completedSteps} of 4 setup steps complete.</>
         )}
       </p>
     </main>

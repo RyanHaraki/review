@@ -5,6 +5,12 @@ import { chromium } from "playwright-core";
 
 const [cdp, server, statePath, evidence] = process.argv.slice(2);
 if (!cdp || !server || !statePath || !evidence) throw new Error("Usage: node verify-pull-request-pages.mjs <cdp-url> <server-url> <fixture-state-path> <evidence-directory>");
+const codexLog = process.env.REVIEW_CODEX_FIXTURE_LOG;
+if (!codexLog) throw new Error("Set REVIEW_CODEX_FIXTURE_LOG and run the isolated app with the Codex fixture first.");
+const generations = async () => {
+  try { return (await readFile(codexLog, "utf8")).trim().split("\n").filter(Boolean).map(line => JSON.parse(line)); }
+  catch (error) { if (error.code === "ENOENT") return []; throw error; }
+};
 const remote = async () => JSON.parse(await readFile(statePath, "utf8"));
 assert.equal((await remote()).repository, "review-fixture/demo", "This check requires the isolated GitHub fixture.");
 assert.equal((await remote()).mutations.length, 0, "Use fresh fixture state.");
@@ -15,11 +21,12 @@ assert.ok(page, "Review renderer is missing.");
 const errors = [];
 page.on("pageerror", error => errors.push(error.message));
 page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
+const accountServer = `${server}/accounts/42`;
 const key = { repository: "review-fixture/demo", number: 42 };
 const records = [];
 const record = (step, result) => { records.push({ step, result }); console.log(step, JSON.stringify(result)); };
 const drafts = async () => {
-  const response = await fetch(`${server}/pull-requests/details/drafts/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(key) });
+  const response = await fetch(`${accountServer}/pull-requests/details/drafts/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(key) });
   assert.equal(response.status, 200); return response.json();
 };
 async function waitFor(check, label) {
@@ -37,6 +44,8 @@ async function published(kind, count) {
 }
 try {
   if (page.url().includes("setup")) {
+    await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).click();
+    await page.getByText("fixture-reviewer", { exact: false }).waitFor();
     await page.getByRole("combobox", { name: "Repositories", exact: true }).click();
     await page.getByRole("option", { name: key.repository, exact: true }).click();
     await page.keyboard.press("Escape");
@@ -80,7 +89,7 @@ try {
   await page.getByRole("button", { name: "Close comments", exact: true }).click();
   await page.getByRole("checkbox", { name: "Reviewed src/greeting.ts", exact: true }).click();
   await page.getByText("1 / 4 files reviewed", { exact: true }).waitFor();
-  const reviewResponse = await fetch(`${server}/pull-requests/details/reviewed/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, baseSha: "a".repeat(40), headSha: "b".repeat(40) }) });
+  const reviewResponse = await fetch(`${accountServer}/pull-requests/details/reviewed/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, baseSha: "a".repeat(40), headSha: "b".repeat(40) }) });
   assert.deepEqual(await reviewResponse.json(), ["src/greeting.ts"]);
   assert.equal(await page.locator('diffs-container [data-diff-type="split"]').count(), 0);
   await page.getByRole("button", { name: "Open src/greeting.ts", exact: true }).waitFor();
@@ -159,6 +168,28 @@ try {
   record("large diff virtualization", { fileLines: 4000, renderedLines, workers: page.workers().length });
   assert.equal((await remote()).mutations.length, 6, "Reads and reloads must not publish again.");
   await page.screenshot({ path: join(evidence, "large-diff.png") });
+  assert.equal((await generations()).length, 0, "Opening a PR must not generate a guide.");
+  await page.getByRole("tab", { name: "Guide", exact: true }).click();
+  await page.getByText("Loading review", { exact: false }).waitFor();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
+  const guideKey = { ...key, baseSha: "a".repeat(40), headSha: "b".repeat(40) };
+  await waitFor(async () => {
+    const response = await fetch(`${accountServer}/review-guides/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(guideKey) });
+    return response.ok && (await response.json()).kind === "ready";
+  }, "guide saved while Overview is open");
+  await page.getByRole("tab", { name: "Guide", exact: true }).click();
+  await page.getByRole("heading", { name: "Greeting implementation", exact: true }).waitFor();
+  await page.waitForFunction(() => {
+    const hosts = Array.from(document.querySelectorAll("diffs-container"));
+    return hosts.length === 3 && hosts.every(host => host.shadowRoot?.querySelectorAll("[data-line]").length > 0);
+  });
+  assert.equal((await generations()).length, 1);
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
+  await page.getByRole("tab", { name: "Guide", exact: true }).click();
+  await page.getByRole("heading", { name: "Greeting implementation", exact: true }).waitFor();
+  assert.equal((await generations()).length, 1, "A saved guide must not generate again.");
+  record("guide explicit generation, navigation persistence, initial code and cache", { generations: 1, textDiffs: 3 });
+  await page.screenshot({ path: join(evidence, "saved-guide.png") });
   assert.deepEqual(errors, []);
   await writeFile(join(evidence, "verification.json"), JSON.stringify({ ok: true, records, errors }, null, 2));
 } catch (error) {

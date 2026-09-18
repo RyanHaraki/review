@@ -1,141 +1,32 @@
-import { registerPullRequestDetails } from "./pull-request-details.js";
-import { execFile } from "node:child_process";
 import { join } from "node:path";
-import { promisify } from "node:util";
-
 import { CodexAppServerClient } from "@review/codex-app-server";
-import type {
-  CodexSetupStatus,
-  GitHubRepositoryChoice,
-  GitHubSetupStatus,
-  PullRequestCacheRead,
-  PullRequestGroup,
-  PullRequestReviewState,
-  PullRequestStatus,
-  PullRequestSummary,
-  ReviewPreferences,
-  SetupStatus,
-} from "@review/contracts";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { defaultPullRequestStatuses, githubProfileSchema, type CodexSetupStatus, type PullRequestCacheRead, type PullRequestGroup, type ReviewPreferences } from "@review/contracts";
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from "electron";
 import { z } from "zod";
+import { createGitHubSession } from "./github-session.js";
+import { createGitHubSessionStore } from "./github-session-store.js";
+import { createGitHubOperations, type GitHubOperation } from "./github-context.js";
+import { readGitHubRepositories, readPullRequestsFromGitHub } from "./github-repositories.js";
+import { registerPullRequestDetails } from "./pull-request-details.js";
 import { createReviewGuides } from "./review-guide.js";
+import type { GitHubRequest } from "./pull-request-github.js";
 
-const execFileAsync = promisify(execFile);
 const codexClient = new CodexAppServerClient();
-let repositoryChoicesPromise: Promise<GitHubRepositoryChoice[]> | null = null;
 const localServerOrigin = process.env.REVIEW_SERVER_ORIGIN ?? "http://127.0.0.1:4319";
-registerPullRequestDetails(localServerOrigin);
-const reviewGuides = createReviewGuides(localServerOrigin, codexClient);
-const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const repositoryListSchema = z.array(z.string().regex(repositoryPattern)).max(50);
-const githubPullRequestSchema = z.object({
-  additions: z.number().int().nonnegative(),
-  author: z.object({ login: z.string() }),
-  baseRefName: z.string(),
-  baseRefOid: z.string(),
-  changedFiles: z.number().int().nonnegative(),
-  deletions: z.number().int().nonnegative(),
-  fullDatabaseId: z.string(),
-  headRefName: z.string(),
-  headRefOid: z.string(),
-  isDraft: z.boolean(),
-  number: z.number().int().positive(),
-  reviewDecision: z.string(),
-  state: z.enum(["OPEN", "CLOSED", "MERGED"]),
-  title: z.string(),
-  updatedAt: z.string(),
-  url: z.string().url(),
-});
-const githubPullRequestListSchema = z.array(githubPullRequestSchema);
+const repositoryListSchema = z.array(z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)).max(50);
 
-function normalizeReviewState(reviewDecision: string): PullRequestReviewState {
-  if (reviewDecision === "APPROVED") {
-    return "approved";
+function developmentOrigin(value: string | undefined): string | undefined {
+  if (app.isPackaged || !value) return undefined;
+  const url = new URL(value);
+  if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || url.pathname !== "/" || url.username || url.password) {
+    throw new Error("GitHub test endpoints must use a loopback HTTP origin.");
   }
-  if (reviewDecision === "CHANGES_REQUESTED") {
-    return "changesRequested";
-  }
-  if (reviewDecision === "REVIEW_REQUIRED") {
-    return "reviewRequired";
-  }
-  return "none";
+  return url.origin;
 }
 
-function normalizePullRequestStatus(
-  state: "OPEN" | "CLOSED" | "MERGED",
-  isDraft: boolean,
-  reviewDecision: string,
-): PullRequestStatus {
-  if (state === "MERGED") {
-    return "merged";
-  }
-  if (state === "CLOSED") {
-    return "closed";
-  }
-  if (isDraft) {
-    return "draft";
-  }
-  if (reviewDecision === "APPROVED") {
-    return "approved";
-  }
-  if (reviewDecision === "CHANGES_REQUESTED" || reviewDecision === "REVIEW_REQUIRED") {
-    return "inReview";
-  }
-  return "open";
-}
-
-async function readPullRequestsFromGitHub(repository: string): Promise<PullRequestGroup> {
-  const result = await execFileAsync(
-    "gh",
-    [
-      "pr",
-      "list",
-      "--repo",
-      repository,
-      "--state",
-      "all",
-      "--limit",
-      "100",
-      "--json",
-      "number,title,author,updatedAt,additions,deletions,changedFiles,isDraft,url,headRefName,baseRefName,headRefOid,baseRefOid,fullDatabaseId,reviewDecision,state",
-    ],
-    { maxBuffer: 10_000_000 },
-  );
-  const pullRequests = githubPullRequestListSchema.parse(JSON.parse(result.stdout));
-
-  return {
-    repository,
-    state: "ready",
-    pullRequests: pullRequests.map((pullRequest): PullRequestSummary => ({
-      repository,
-      githubId: pullRequest.fullDatabaseId,
-      number: pullRequest.number,
-      title: pullRequest.title,
-      authorLogin: pullRequest.author.login,
-      authorAvatarUrl: `https://avatars.githubusercontent.com/${encodeURIComponent(pullRequest.author.login)}?size=64`,
-      additions: pullRequest.additions,
-      deletions: pullRequest.deletions,
-      changedFiles: pullRequest.changedFiles,
-      updatedAt: pullRequest.updatedAt,
-      isDraft: pullRequest.isDraft,
-      url: pullRequest.url,
-      headRefName: pullRequest.headRefName,
-      baseRefName: pullRequest.baseRefName,
-      baseSha: pullRequest.baseRefOid,
-      headSha: pullRequest.headRefOid,
-      reviewState: normalizeReviewState(pullRequest.reviewDecision),
-      status: normalizePullRequestStatus(
-        pullRequest.state,
-        pullRequest.isDraft,
-        pullRequest.reviewDecision,
-      ),
-    })),
-  };
-}
-
-async function readPullRequestCache(repositories: string[]): Promise<PullRequestCacheRead | null> {
+async function readPullRequestCache(origin: string, repositories: string[]): Promise<PullRequestCacheRead | null> {
   try {
-    const response = await fetch(`${localServerOrigin}/pull-requests/cache/read`, {
+    const response = await fetch(`${origin}/pull-requests/cache/read`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ repositories }),
@@ -150,9 +41,9 @@ async function readPullRequestCache(repositories: string[]): Promise<PullRequest
   }
 }
 
-async function writePullRequestCache(groups: PullRequestGroup[]): Promise<void> {
+async function writePullRequestCache(origin: string, groups: PullRequestGroup[]): Promise<void> {
   try {
-    await fetch(`${localServerOrigin}/pull-requests/cache`, {
+    await fetch(`${origin}/pull-requests/cache`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ groups }),
@@ -162,8 +53,8 @@ async function writePullRequestCache(groups: PullRequestGroup[]): Promise<void> 
   }
 }
 
-async function readPreferences(): Promise<ReviewPreferences> {
-  const response = await fetch(`${localServerOrigin}/preferences`);
+async function readPreferences(origin: string): Promise<ReviewPreferences> {
+  const response = await fetch(`${origin}/preferences`);
   if (!response.ok) {
     throw new Error("Unable to read preferences.");
   }
@@ -171,8 +62,8 @@ async function readPreferences(): Promise<ReviewPreferences> {
   return await response.json() as ReviewPreferences;
 }
 
-async function savePreferences(preferences: ReviewPreferences): Promise<void> {
-  const response = await fetch(`${localServerOrigin}/preferences`, {
+async function savePreferences(origin: string, preferences: ReviewPreferences): Promise<void> {
+  const response = await fetch(`${origin}/preferences`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(preferences),
@@ -182,14 +73,15 @@ async function savePreferences(preferences: ReviewPreferences): Promise<void> {
   }
 }
 
-async function listPullRequests(repositoryInput: string[]): Promise<PullRequestGroup[]> {
+async function listPullRequests(context: GitHubOperation, repositoryInput: string[]): Promise<PullRequestGroup[]> {
+  const { origin, request } = context;
   const repositories = repositoryListSchema.parse(repositoryInput);
-  const cache = await readPullRequestCache(repositories);
+  const cache = await readPullRequestCache(origin, repositories);
   const freshRepositories = new Set(cache?.freshRepositories ?? []);
   const cachedRepositories = new Set(cache?.cachedRepositories ?? []);
   const cachedGroups = new Map(cache?.groups.map((group) => [group.repository, group]) ?? []);
   const staleRepositories = repositories.filter((repository) => !freshRepositories.has(repository));
-  const fetchedResults = await Promise.allSettled(staleRepositories.map(readPullRequestsFromGitHub));
+  const fetchedResults = await Promise.allSettled(staleRepositories.map((repository) => readPullRequestsFromGitHub(repository, request)));
   const fetchedGroups = new Map<string, PullRequestGroup>();
 
   for (const [index, result] of fetchedResults.entries()) {
@@ -208,7 +100,7 @@ async function listPullRequests(repositoryInput: string[]): Promise<PullRequestG
 
   const updatedGroups = [...fetchedGroups.values()].filter((group) => group.state === "ready");
   if (updatedGroups.length > 0) {
-    await writePullRequestCache(updatedGroups);
+    await writePullRequestCache(origin, updatedGroups);
   }
 
   return repositories.map((repository) =>
@@ -216,84 +108,6 @@ async function listPullRequests(repositoryInput: string[]): Promise<PullRequestG
       ?? cachedGroups.get(repository)
       ?? { repository, state: "unavailable", pullRequests: [] },
   );
-}
-
-function parseRepositoryChoice(line: string): GitHubRepositoryChoice | null {
-  const [nameWithOwner, privateValue] = line.split("\t");
-  if (!nameWithOwner?.includes("/")) {
-    return null;
-  }
-
-  return {
-    value: nameWithOwner,
-    label: nameWithOwner,
-    isPrivate: privateValue === "true",
-  };
-}
-
-async function readGitHubRepositories(): Promise<GitHubRepositoryChoice[]> {
-  const result = await execFileAsync(
-    "gh",
-    [
-      "api",
-      "--method",
-      "GET",
-      "/user/repos",
-      "-f",
-      "per_page=100",
-      "-f",
-      "sort=updated",
-      "-f",
-      "affiliation=owner,collaborator,organization_member",
-      "--paginate",
-      "--cache",
-      "1h",
-      "--jq",
-      ".[] | select(.archived | not) | [.full_name, .private] | @tsv",
-    ],
-    { maxBuffer: 5_000_000 },
-  );
-
-  return result.stdout
-    .split("\n")
-    .map(parseRepositoryChoice)
-    .filter((repository): repository is GitHubRepositoryChoice => repository !== null);
-}
-
-function listGitHubRepositories(): Promise<GitHubRepositoryChoice[]> {
-  repositoryChoicesPromise ??= readGitHubRepositories().catch(() => {
-    repositoryChoicesPromise = null;
-    throw new Error("Unable to load GitHub repositories.");
-  });
-
-  return repositoryChoicesPromise;
-}
-
-async function readGitHubStatus(): Promise<GitHubSetupStatus> {
-  try {
-    await execFileAsync("gh", ["--version"]);
-  } catch {
-    return {
-      state: "unavailable",
-      login: null,
-    };
-  }
-
-  try {
-    await execFileAsync("gh", ["auth", "status", "--hostname", "github.com"]);
-    const account = await execFileAsync("gh", ["api", "user", "--jq", ".login"]);
-    const login = account.stdout.trim();
-
-    return {
-      state: "connected",
-      login: login || null,
-    };
-  } catch {
-    return {
-      state: "disconnected",
-      login: null,
-    };
-  }
 }
 
 async function readCodexStatus(): Promise<CodexSetupStatus> {
@@ -338,36 +152,62 @@ async function readCodexStatus(): Promise<CodexSetupStatus> {
   }
 }
 
-async function readSetupStatus(): Promise<SetupStatus> {
-  const [github, codex] = await Promise.all([readGitHubStatus(), readCodexStatus()]);
-
-  return {
-    github,
-    codex,
-  };
-}
-
-ipcMain.handle("setup:read", readSetupStatus);
-ipcMain.handle("review-guide:read", (_event, key) => reviewGuides.read(key));
-ipcMain.handle("review-guide:generate", (_event, key) => reviewGuides.ensure(key));
-ipcMain.handle("setup:list-github-repositories", listGitHubRepositories);
-ipcMain.handle("preferences:read", readPreferences);
-ipcMain.handle("preferences:save", (_event, preferences: ReviewPreferences) =>
-  savePreferences(preferences));
-ipcMain.handle("setup:connect-codex", async () => {
-  const login = await codexClient.startChatGptLogin();
-  const authUrl = new URL(login.authUrl);
-  const isChatGptHost = authUrl.hostname === "chatgpt.com" || authUrl.hostname.endsWith(".chatgpt.com");
-  const isOpenAiAuthHost = authUrl.hostname === "auth.openai.com";
-
-  if (authUrl.protocol !== "https:" || (!isChatGptHost && !isOpenAiAuthHost)) {
-    throw new Error("Codex returned an unexpected sign-in URL.");
+function registerGitHub() {
+  const authOrigin = developmentOrigin(process.env.REVIEW_GITHUB_AUTH_ORIGIN);
+  const apiOrigin = developmentOrigin(process.env.REVIEW_GITHUB_API_ORIGIN);
+  const auth = createGitHubSession({
+    clientId: process.env.REVIEW_GITHUB_CLIENT_ID ?? "Iv23liyi7SNFWnkOxQX6",
+    authOrigin: authOrigin ?? "https://github.com",
+    apiOrigin: apiOrigin ?? "https://api.github.com",
+    store: createGitHubSessionStore({ path: join(app.getPath("userData"), "github-session.enc"), encryption: safeStorage }),
+    onChange(status) {
+      for (const window of BrowserWindow.getAllWindows()) window.webContents.send("github:changed", status);
+    },
+  });
+  const withSession = createGitHubOperations(auth, localServerOrigin);
+  const guides = new WeakMap<GitHubRequest, ReturnType<typeof createReviewGuides>>();
+  function reviewGuides(context: GitHubOperation) {
+    let manager = guides.get(context.request);
+    if (!manager) {
+      manager = createReviewGuides(context.origin, codexClient, context.request);
+      guides.set(context.request, manager);
+    }
+    return manager;
   }
-
-  await shell.openExternal(authUrl.toString());
-});
-ipcMain.handle("pull-requests:list", (_event, repositories: string[]) =>
-  listPullRequests(repositories));
+  registerPullRequestDetails(withSession);
+  ipcMain.handle("github:session", () => auth.status());
+  ipcMain.handle("github:profile", () => withSession(async ({ request }) => githubProfileSchema.parse(await request("user"))));
+  ipcMain.handle("github:sign-in", async () => {
+    const status = await auth.signIn();
+    if (status.state === "authorizing" && !authOrigin) await shell.openExternal(status.verificationUri);
+    return status;
+  });
+  ipcMain.handle("github:cancel", () => auth.cancel());
+  ipcMain.handle("github:sign-out", () => auth.signOut());
+  ipcMain.handle("github:install", () => shell.openExternal("https://github.com/apps/diligent-review/installations/new"));
+  ipcMain.handle("setup:read", async () => {
+    const [github, codex] = await Promise.all([auth.status(), readCodexStatus()]);
+    return { github, codex };
+  });
+  ipcMain.handle("review-guide:read", (_event, key) => withSession((context) => reviewGuides(context).read(key)));
+  ipcMain.handle("review-guide:generate", (_event, key) => withSession((context) => reviewGuides(context).ensure(key)));
+  ipcMain.handle("setup:list-github-repositories", () => withSession(({ request }) => readGitHubRepositories(request)));
+  ipcMain.handle("preferences:read", async () => {
+    const status = await auth.status();
+    if (status.state !== "connected") return { repositories: [], pullRequestStatuses: [...defaultPullRequestStatuses], setupComplete: false };
+    return withSession(({ origin }) => readPreferences(origin));
+  });
+  ipcMain.handle("preferences:save", (_event, preferences: ReviewPreferences) => withSession(({ origin }) => savePreferences(origin, preferences)));
+  ipcMain.handle("pull-requests:list", (_event, repositories: string[]) => withSession((context) => listPullRequests(context, repositories)));
+  ipcMain.handle("setup:connect-codex", async () => {
+    const login = await codexClient.startChatGptLogin();
+    const authUrl = new URL(login.authUrl);
+    const isChatGptHost = authUrl.hostname === "chatgpt.com" || authUrl.hostname.endsWith(".chatgpt.com");
+    if (authUrl.protocol !== "https:" || (!isChatGptHost && authUrl.hostname !== "auth.openai.com")) throw new Error("Codex returned an unexpected sign-in URL.");
+    await shell.openExternal(authUrl.toString());
+  });
+  app.on("before-quit", () => { void auth.cancel(); });
+}
 
 function createMainWindow() {
   const window = new BrowserWindow({
@@ -404,19 +244,13 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+  registerGitHub();
   createMainWindow();
-
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
 });
-
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  if (process.platform !== "darwin") app.quit();
 });
-
 app.on("before-quit", () => codexClient.stop());

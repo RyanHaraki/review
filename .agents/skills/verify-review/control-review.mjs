@@ -28,14 +28,14 @@ const errorCodes = new Set([
 ]);
 const mutationCommands = new Set([
   "navigate.home", "navigate.scroll", "interact.click", "interact.click-xy", "interact.aria-click",
-  "interact.type", "interact.press", "interact.eval", "health.cleanup", "health.watch",
+  "interact.type", "interact.press", "interact.eval", "health.cleanup", "health.restart", "health.watch",
 ]);
 const knownCommands = new Set([
   "inspect.info", "inspect.snapshot", "inspect.screenshot", "inspect.components",
   "navigate.home", "navigate.scroll", "interact.click", "interact.click-xy", "interact.aria-click",
   "interact.type", "interact.press", "interact.eval", "performance.trace", "performance.profile",
   "performance.record", "performance.perf-metrics", "performance.wait-settle", "streaming.console",
-  "streaming.network-log", "streaming.network-summary", "health.doctor", "health.cleanup", "health.watch",
+  "streaming.network-log", "streaming.network-summary", "health.doctor", "health.cleanup", "health.restart", "health.watch",
 ]);
 
 function result(value) {
@@ -60,7 +60,7 @@ Groups:
   interact     click, click-xy, aria-click, type, press, eval
   performance  trace, profile, record, perf-metrics, wait-settle
   streaming    console, network-log, network-summary
-  health       doctor, cleanup, watch --restart
+  health       doctor, cleanup, restart, watch --restart
 
 Common options:
   --run-id <id>       target one isolated run
@@ -365,6 +365,30 @@ async function runReactDoctor() {
   }
 }
 
+async function restartRun(run) {
+  if (!run || run.status !== "active") throw Object.assign(new Error("An active isolated run is required."), { code: "RUN_NOT_FOUND" });
+  const command = await runCommand("ps", ["-p", String(run.app.pid), "-o", "command="]);
+  if (!command.stdout.includes(`--user-data-dir=${run.app.profileDirectory}`)) {
+    throw Object.assign(new Error("The recorded app process does not own this isolated profile."), { code: "PROCESS_NOT_OWNED" });
+  }
+  process.kill(run.app.pid, "SIGTERM");
+  for (let attempt = 0; attempt < 20 && processAlive(run.app.pid); attempt += 1) await sleep(100);
+  if (processAlive(run.app.pid)) throw Object.assign(new Error("The app did not stop. Inspect it before restarting."), { code: "APP_NOT_READY" });
+  const app = spawn(executablePath(), [".", `--user-data-dir=${run.app.profileDirectory}`, "--remote-debugging-port=0"], {
+    cwd: join(repoRoot, "apps/desktop"),
+    env: { ...process.env, REVIEW_SERVER_ORIGIN: run.server.origin },
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+  });
+  const ready = await waitForLine(app, /DevTools listening on (ws:\/\/127\.0\.0\.1:(\d+).+)/, 20000, "Restarted Review app");
+  app.stdout?.destroy();
+  app.stderr?.destroy();
+  app.unref();
+  const updated = { ...run, app: { ...run.app, pid: app.pid }, cdp: { pid: app.pid, port: Number(ready[2]), url: ready[1] } };
+  await writeToon(run.manifestPath, updated);
+  return updated;
+}
+
 async function cleanupRun(run) {
   if (!run) return { ok: true, cleaned: false };
   for (const processInfo of [run.app, run.server]) {
@@ -497,6 +521,12 @@ async function main() {
     if (command === "health.cleanup") {
       run = await loadRun(options.run_id);
       return result(await cleanupRun(run));
+    }
+    if (command === "health.restart") {
+      run = await restartRun(await loadRun(options.run_id));
+      const { browser, page } = await connectPage(run);
+      try { return result({ ok: true, command, runId: run.runId, data: { run, page: await pageSnapshot(page) } }); }
+      finally { await browser.close(); }
     }
     if (command === "health.doctor") {
       run = await ensureRun(options);

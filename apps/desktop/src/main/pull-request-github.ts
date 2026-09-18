@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import { z } from "zod";
 import type {
   PullRequestKey,
@@ -7,7 +6,7 @@ import type {
   PullRequestThread,
 } from "@review/contracts";
 
-// Raw subprocess JSON is parsed by endpoint-specific schemas below.
+// Endpoint-specific schemas parse GitHub responses below.
 /* oxlint-disable anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type */
 export type GitHubRequest = (
   endpoint: string,
@@ -16,38 +15,6 @@ export type GitHubRequest = (
 ) => Promise<unknown>;
 /* oxlint-enable anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type */
 export class GitHubRejection extends Error {}
-export const requestGitHub: GitHubRequest = (endpoint, body, method) =>
-  new Promise((resolve, reject) => {
-    const args = [
-      "api",
-      endpoint,
-      "--method",
-      method ?? (body ? "POST" : "GET"),
-    ];
-    if (body) args.push("--input", "-");
-    const child = execFile(
-      "gh",
-      args,
-      { maxBuffer: 30_000_000 },
-      (error, stdout, stderr) => {
-        if (error) {
-          const message = stderr.trim() || "GitHub request failed.";
-          reject(
-            /HTTP (400|401|403|404|405|409|422)\b/.test(message)
-              ? new GitHubRejection(message)
-              : new Error(message),
-          );
-          return;
-        }
-        try {
-          resolve(JSON.parse(stdout));
-        } catch {
-          reject(new Error("GitHub returned invalid JSON."));
-        }
-      },
-    );
-    child.stdin?.end(body ? JSON.stringify(body) : undefined);
-  });
 const actor = z.object({ login: z.string(), avatarUrl: z.string().nullable() });
 const pageInfo = z.object({
   hasNextPage: z.boolean(),

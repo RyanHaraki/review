@@ -22,6 +22,7 @@ import { z } from "zod";
 import { guideKeySchema, guideRecordSchema, type GuideState } from "@review/contracts";
 
 import type { ReviewDatabase } from "./database/client.js";
+import type { AccountDatabases } from "./database/account-databases.js";
 import { readPullRequestCache, writePullRequestCache } from "./database/pull-request-cache.js";
 import {
   claimPullRequestDraft,
@@ -259,78 +260,83 @@ async function handlePullRequestDetailsRequest(
   }
 }
 
-export function createReviewServer(reviewDatabase: ReviewDatabase) {
+export function createReviewServer(databases: AccountDatabases) {
   return createServer(async (request, response) => {
-    if (request.url?.startsWith("/review-guides")) {
-      try {
-        await handleGuideRequest(request, response, reviewDatabase);
-      } catch {
-        sendJson(response, 400, { error: "Unable to read or save the review guide." });
-      }
-      return;
-    }
     if (request.method === "GET" && request.url === "/health") {
-      const body = JSON.stringify({
-        ok: true,
-        databasePath: reviewDatabase.path,
-      } satisfies LocalServerHealth);
-
-      response.writeHead(200, {
-        "content-type": "application/json; charset=utf-8",
-        "content-length": Buffer.byteLength(body),
-      });
-      response.end(body);
+      sendJson(response, 200, { ok: true, databasePath: databases.path });
       return;
     }
+    const scope = /^\/accounts\/([1-9][0-9]{0,19})(\/.*)$/.exec(request.url ?? "");
+    if (!scope?.[1] || !scope[2]) {
+      sendJson(response, 404, { error: "An account is required." });
+      return;
+    }
+    try {
+      const reviewDatabase = databases.forAccount(scope[1]);
+      request.url = scope[2];
+      await handleAccountRequest(request, response, reviewDatabase);
+    } catch {
+      if (!response.headersSent) sendJson(response, 500, { error: "Unable to access local account data." });
+    }
+  });
+}
 
-    if (request.method === "POST" && request.url === "/pull-requests/cache/read") {
-      const repositories = readRepositories(await readBody(request));
-      if (!repositories) {
-        sendJson(response, 400, { error: "Invalid repositories" });
+async function handleAccountRequest(request: IncomingMessage, response: ServerResponse, reviewDatabase: ReviewDatabase) {
+  if (request.url?.startsWith("/review-guides")) {
+    try {
+      await handleGuideRequest(request, response, reviewDatabase);
+    } catch {
+      sendJson(response, 400, { error: "Unable to read or save the review guide." });
+    }
+    return;
+  }
+  if (request.method === "POST" && request.url === "/pull-requests/cache/read") {
+    const repositories = readRepositories(await readBody(request));
+    if (!repositories) {
+      sendJson(response, 400, { error: "Invalid repositories" });
+      return;
+    }
+    sendJson(response, 200, readPullRequestCache(reviewDatabase, repositories));
+    return;
+  }
+
+  if (await handlePullRequestDetailsRequest(request, response, reviewDatabase)) {
+    return;
+  }
+
+  if (request.method === "GET" && request.url === "/preferences") {
+    sendJson(response, 200, readUserPreferences(reviewDatabase));
+    return;
+  }
+
+  if (request.method === "PUT" && request.url === "/preferences") {
+    try {
+      const result = preferencesSchema.safeParse(JSON.parse(await readBody(request)));
+      if (!result.success) {
+        sendJson(response, 400, { error: "Invalid preferences" });
         return;
       }
-      sendJson(response, 200, readPullRequestCache(reviewDatabase, repositories));
-      return;
+      writeUserPreferences(reviewDatabase, result.data);
+      sendJson(response, 200, { ok: true });
+    } catch {
+      sendJson(response, 400, { error: "Invalid preferences" });
     }
+    return;
+  }
 
-    if (await handlePullRequestDetailsRequest(request, response, reviewDatabase)) {
-      return;
+  if (request.method === "PUT" && request.url === "/pull-requests/cache") {
+    try {
+      // SAFETY: The local Electron main process creates this payload from normalized GitHub data.
+      const payload = JSON.parse(await readBody(request)) as PullRequestCacheWrite;
+      writePullRequestCache(reviewDatabase, payload);
+      sendJson(response, 200, { ok: true });
+    } catch {
+      sendJson(response, 400, { error: "Invalid pull request cache payload" });
     }
+    return;
+  }
 
-    if (request.method === "GET" && request.url === "/preferences") {
-      sendJson(response, 200, readUserPreferences(reviewDatabase));
-      return;
-    }
-
-    if (request.method === "PUT" && request.url === "/preferences") {
-      try {
-        const result = preferencesSchema.safeParse(JSON.parse(await readBody(request)));
-        if (!result.success) {
-          sendJson(response, 400, { error: "Invalid preferences" });
-          return;
-        }
-        writeUserPreferences(reviewDatabase, result.data);
-        sendJson(response, 200, { ok: true });
-      } catch {
-        sendJson(response, 400, { error: "Invalid preferences" });
-      }
-      return;
-    }
-
-    if (request.method === "PUT" && request.url === "/pull-requests/cache") {
-      try {
-        // SAFETY: The local Electron main process creates this payload from normalized GitHub data.
-        const payload = JSON.parse(await readBody(request)) as PullRequestCacheWrite;
-        writePullRequestCache(reviewDatabase, payload);
-        sendJson(response, 200, { ok: true });
-      } catch {
-        sendJson(response, 400, { error: "Invalid pull request cache payload" });
-      }
-      return;
-    }
-
-    sendJson(response, 404, { error: "Not found" });
-  });
+  sendJson(response, 404, { error: "Not found" });
 }
 
 async function handleGuideRequest(request: IncomingMessage, response: ServerResponse, database: ReviewDatabase): Promise<void> {

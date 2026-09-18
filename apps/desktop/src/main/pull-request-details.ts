@@ -17,7 +17,7 @@ import {
   savePullRequestDraftSchema,
   threadResolutionSchema,
 } from "@review/contracts";
-import { requestGitHub } from "./pull-request-github.js";
+import type { WithGitHubSession } from "./github-context.js";
 import {
   readOverviewDocument,
   readDiffDocument,
@@ -25,84 +25,66 @@ import {
 import {
   resolveThread,
   submitDraft,
-  type LocalRequest,
 } from "./pull-request-submissions.js";
 
-export function registerPullRequestDetails(origin: string) {
-  const local: LocalRequest = async (
-    path,
-    body,
-    method: "POST" | "PUT" = "POST",
-  ) => {
-    const response = await fetch(`${origin}/pull-requests/details/${path}`, {
-      method,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const result: unknown = await response.json();
-    if (!response.ok)
-      throw new Error(z.object({ error: z.string() }).parse(result).error);
-    return result;
-  };
+export function registerPullRequestDetails(withSession: WithGitHubSession) {
   ipcMain.handle("pull-requests:reviewed-read", async (_event, input: FileReviewKey) =>
-    z.array(z.string()).parse(await local("reviewed/read", fileReviewKeySchema.parse(input))),
+    withSession(async ({ local }) => z.array(z.string()).parse(await local("reviewed/read", fileReviewKeySchema.parse(input)))),
   );
   ipcMain.handle("pull-requests:reviewed-write", async (_event, input: SetFileReviewed) => {
-    await local("reviewed/write", setFileReviewedSchema.parse(input), "PUT");
+    await withSession(({ local }) => local("reviewed/write", setFileReviewedSchema.parse(input), "PUT"));
   });
   ipcMain.handle(
     "pull-requests:overview",
     async (_event, input: PullRequestKey) => {
       const key = pullRequestKeySchema.parse(input);
-      return readOverviewDocument(key, requestGitHub, local);
+      return withSession(({ request, local }) => readOverviewDocument(key, request, local));
     },
   );
   ipcMain.handle(
     "pull-requests:diff",
     async (_event, input: PullRequestKey) => {
       const key = pullRequestKeySchema.parse(input);
-      return readDiffDocument(key, requestGitHub, local);
+      return withSession(({ request, local }) => readDiffDocument(key, request, local));
     },
   );
   ipcMain.handle(
     "pull-requests:drafts-list",
     async (_event, input: PullRequestKey) =>
-      z
-        .array(pullRequestDraftSchema)
-        .parse(await local("drafts/read", pullRequestKeySchema.parse(input))),
+      withSession(async ({ local }) => z.array(pullRequestDraftSchema).parse(await local("drafts/read", pullRequestKeySchema.parse(input)))),
   );
   ipcMain.handle(
     "pull-requests:draft-save",
     async (_event, input: SavePullRequestDraft) =>
-      pullRequestDraftSchema.parse(
+      withSession(async ({ local }) => pullRequestDraftSchema.parse(
         await local(
           "drafts/save",
           savePullRequestDraftSchema.parse(input),
           "PUT",
         ),
-      ),
+      )),
   );
   ipcMain.handle(
     "pull-requests:draft-delete",
     async (_event, input: DraftReference) => {
-      await local("drafts/delete", draftReferenceSchema.parse(input));
+      await withSession(({ local }) => local("drafts/delete", draftReferenceSchema.parse(input)));
     },
   );
   ipcMain.handle(
     "pull-requests:draft-submit",
     async (_event, input: DraftReference) =>
-      submitDraft(draftReferenceSchema.parse(input), requestGitHub, local),
+      withSession(({ request, local }) => submitDraft(draftReferenceSchema.parse(input), request, local)),
   );
   ipcMain.handle(
     "pull-requests:thread-resolve",
     async (_event, input: ThreadResolution) => {
       const value = threadResolutionSchema.parse(input);
-      await resolveThread(
+      await withSession(({ request }) => resolveThread(
         value.key,
         value.threadId,
         value.resolved,
-        requestGitHub,
-      );
+        request,
+      ));
     },
   );
 }

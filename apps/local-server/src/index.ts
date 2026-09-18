@@ -3,14 +3,14 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
-import { openReviewDatabase } from "./database/client.js";
+import { openAccountDatabases } from "./database/account-databases.js";
 import { createReviewServer } from "./server.js";
 
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.REVIEW_SERVER_PORT ?? "4319", 10);
 const dataDirectory = process.env.REVIEW_DATA_DIR ?? join(homedir(), ".review");
 
-const reviewDatabase = openReviewDatabase(dataDirectory);
+const reviewDatabase = openAccountDatabases(dataDirectory);
 const server = createReviewServer(reviewDatabase);
 
 server.listen(port, host, () => {

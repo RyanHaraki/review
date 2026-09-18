@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 
 import type { CodexAppServerClient } from "@review/codex-app-server";
 import {
@@ -15,8 +13,8 @@ import {
   type GuideState,
 } from "@review/contracts";
 import { z } from "zod";
+import { readPages, type GitHubRequest } from "./pull-request-github.js";
 
-const execFileAsync = promisify(execFile);
 const githubRevisionSchema = z.object({
   title: z.string(),
   body: z.string().nullable(),
@@ -75,22 +73,14 @@ export function validateGuideOutline(outline: GuideOutline, files: GuideFile[]):
   };
 }
 
-async function githubJson(path: string, paginate = false): Promise<string> {
-  const result = await execFileAsync("gh", ["api", path, ...(paginate ? ["--paginate", "--slurp"] : [])], {
-    maxBuffer: 20_000_000,
-    timeout: 60_000,
-  });
-  return result.stdout;
-}
-
-async function generateGuide(key: GuideKey, codex: CodexAppServerClient): Promise<GuideState> {
+async function generateGuide(key: GuideKey, codex: CodexAppServerClient, github: GitHubRequest): Promise<GuideState> {
   const endpoint = `repos/${key.repository}/pulls/${key.number}`;
-  const before = githubRevisionSchema.parse(JSON.parse(await githubJson(endpoint)));
+  const before = githubRevisionSchema.parse(await github(endpoint));
   if (before.base.sha !== key.baseSha || before.head.sha !== key.headSha) {
     throw new Error("This pull request has new commits. Refresh the pull request and open Guide again.");
   }
-  const pages = z.array(z.array(githubFileSchema)).parse(JSON.parse(await githubJson(`${endpoint}/files?per_page=100`, true)));
-  const files: GuideFile[] = pages.flat().map((file) => ({
+  const remoteFiles = await readPages(`${endpoint}/files`, githubFileSchema, github);
+  const files: GuideFile[] = remoteFiles.map((file) => ({
     path: file.filename,
     previousPath: file.previous_filename ?? null,
     status: file.status,
@@ -98,7 +88,7 @@ async function generateGuide(key: GuideKey, codex: CodexAppServerClient): Promis
     deletions: file.deletions,
     patch: file.patch ?? null,
   }));
-  const after = githubRevisionSchema.parse(JSON.parse(await githubJson(endpoint)));
+  const after = githubRevisionSchema.parse(await github(endpoint));
   if (after.base.sha !== key.baseSha || after.head.sha !== key.headSha) {
     throw new Error("This pull request changed while loading. Refresh it and try again.");
   }
@@ -211,7 +201,7 @@ export function createGuideManager(storage: GuideStorage, generate: (key: GuideK
   return { read, ensure };
 }
 
-export function createReviewGuides(origin: string, codex: CodexAppServerClient) {
+export function createReviewGuides(origin: string, codex: CodexAppServerClient, github: GitHubRequest) {
   const storage: GuideStorage = {
     async read(key) {
       const response = await fetch(`${origin}/review-guides/read`, {
@@ -227,5 +217,5 @@ export function createReviewGuides(origin: string, codex: CodexAppServerClient) 
       if (!response.ok) throw new Error("Unable to save the guide.");
     },
   };
-  return createGuideManager(storage, (key) => generateGuide(key, codex));
+  return createGuideManager(storage, (key) => generateGuide(key, codex, github));
 }

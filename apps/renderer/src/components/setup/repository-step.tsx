@@ -1,12 +1,13 @@
 import { Combobox } from "@base-ui/react/combobox";
 import type { GitHubRepositoryChoice } from "@review/contracts";
 import { useRef } from "react";
+import { SetupIcon } from "./setup-icon";
 import { Button } from "../ui/button";
 
 type RepositoryStepProps = {
   choices: GitHubRepositoryChoice[];
   selected: GitHubRepositoryChoice[];
-  githubConnected: boolean;
+  installationComplete: boolean;
   loading: boolean;
   error: boolean;
   onChange(repositories: GitHubRepositoryChoice[]): void;
@@ -16,49 +17,24 @@ type RepositoryStepProps = {
 export function RepositoryStep({
   choices,
   selected,
-  githubConnected,
+  installationComplete,
   loading,
   error,
   onChange,
   retry,
 }: RepositoryStepProps) {
   const anchor = useRef<HTMLDivElement>(null);
-  const complete = selected.length > 0;
-  const icon = complete
-    ? (
-      <span
-        className="grid size-7 shrink-0 place-items-center rounded-full border border-black/12 bg-black/[0.055] text-[0.6875rem] font-[650] text-black/[0.62]"
-        aria-hidden="true"
-      >
-        <svg viewBox="0 0 20 20" fill="none" className="size-3.5">
-          <path
-            d="m5 10.5 3 3 7-7"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
-    )
-    : (
-      <span
-        className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-[0.6875rem] font-[650] text-white shadow-[0_1px_2px_rgb(0_0_0_/_0.16)]"
-        aria-hidden="true"
-      >
-        <span>3</span>
-      </span>
-    );
+  const complete = installationComplete && selected.length > 0;
 
   return (
     <li className="grid gap-2 rounded-lg border border-transparent px-1 py-2 sm:px-2">
       <div className="flex min-w-0 items-start gap-2.5">
-        {icon}
+        <SetupIcon complete={complete} step={4} />
         <div className="grid min-w-0 gap-0.5">
-          <span className="text-sm font-medium text-text">Repositories</span>
+          <span className="text-sm font-medium text-text">Choose repositories</span>
           <span className="text-xs leading-4 text-text-secondary">
-            {!githubConnected ? (
-              <>Connect GitHub to load repositories.</>
+            {!installationComplete ? (
+              <>Install the GitHub app to choose repositories.</>
             ) : loading ? (
               <>Loading repositories.</>
             ) : error ? (
@@ -71,7 +47,7 @@ export function RepositoryStep({
           </span>
         </div>
       </div>
-      {error && githubConnected
+      {error && installationComplete
         ? (
           <Button
             className="min-h-8 ms-9 w-fit rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-[background-color,scale] duration-100 active:scale-[0.96] [@media(hover:hover)]:hover:bg-[#333331]"
@@ -115,7 +91,7 @@ export function RepositoryStep({
                     <Combobox.Input
                       aria-label="Repositories"
                       className="min-h-7 min-w-28 flex-1 bg-transparent px-1 text-xs text-text outline-none placeholder:text-text-tertiary"
-                      disabled={!githubConnected || loading}
+                      disabled={!installationComplete || loading}
                       placeholder={values.length > 0 ? "Add repository" : "Search repositories"}
                     />
                   </>
