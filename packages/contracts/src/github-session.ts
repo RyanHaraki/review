@@ -20,3 +20,9 @@ export const githubSetupStatusSchema = z.discriminatedUnion("state", [
 
 export type GitHubAccount = z.infer<typeof githubAccountSchema>;
 export type GitHubSetupStatus = z.infer<typeof githubSetupStatusSchema>;
+
+export const githubProfileSchema = z.object({
+  name: z.string().nullable(),
+  email: z.string().nullable(),
+});
+export type GitHubProfile = z.infer<typeof githubProfileSchema>;

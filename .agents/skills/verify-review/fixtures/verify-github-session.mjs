@@ -85,7 +85,8 @@ try {
   assert.equal(Object.keys((await state()).devices).length, devices);
   record("encrypted session survives app process restart without new authorization", true);
 
-  await page.getByRole("link", { name: "Account", exact: true }).click();
+  await page.getByRole("button", { name: /^Account menu for / }).click();
+  await page.getByRole("menuitem", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).waitFor();
   await assert.rejects(readFile(encryptedPath), error => error.code === "ENOENT");
@@ -98,7 +99,8 @@ try {
   assert.equal((await preferences(84)).setupComplete, false);
   assert.equal((await preferences(42)).setupComplete, true);
   await selectRepository();
-  await page.getByRole("link", { name: "Account", exact: true }).click();
+  await page.getByRole("button", { name: /^Account menu for / }).click();
+  await page.getByRole("menuitem", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await configure({ accountId: 42, login: "fixture-reviewer" });
   await signIn("fixture-reviewer");
@@ -107,7 +109,8 @@ try {
   record("account switch keeps preferences separate and restores original account", true);
 
   await configure({ revoked: true });
-  await page.getByRole("link", { name: "Account", exact: true }).click();
+  await page.getByRole("button", { name: /^Account menu for / }).click();
+  await page.getByRole("menuitem", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).waitFor();
   record("revoked token returns to sign-in", true);
   assert.equal((await state()).mutations.length, 0);

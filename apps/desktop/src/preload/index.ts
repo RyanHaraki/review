@@ -11,6 +11,7 @@ const desktopBridge: DesktopBridge = {
   getSetupStatus: () => ipcRenderer.invoke("setup:read"),
   connectCodex: () => ipcRenderer.invoke("setup:connect-codex"),
   readGitHubSession: () => ipcRenderer.invoke("github:session"),
+  readGitHubProfile: () => ipcRenderer.invoke("github:profile"),
   signInGitHub: () => ipcRenderer.invoke("github:sign-in"),
   cancelGitHubSignIn: () => ipcRenderer.invoke("github:cancel"),
   signOutGitHub: () => ipcRenderer.invoke("github:sign-out"),

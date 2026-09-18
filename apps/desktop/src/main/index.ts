@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { CodexAppServerClient } from "@review/codex-app-server";
-import { defaultPullRequestStatuses, type CodexSetupStatus, type PullRequestCacheRead, type PullRequestGroup, type ReviewPreferences } from "@review/contracts";
+import { defaultPullRequestStatuses, githubProfileSchema, type CodexSetupStatus, type PullRequestCacheRead, type PullRequestGroup, type ReviewPreferences } from "@review/contracts";
 import { app, BrowserWindow, ipcMain, safeStorage, shell } from "electron";
 import { z } from "zod";
 import { createGitHubSession } from "./github-session.js";
@@ -176,6 +176,7 @@ function registerGitHub() {
   }
   registerPullRequestDetails(withSession);
   ipcMain.handle("github:session", () => auth.status());
+  ipcMain.handle("github:profile", () => withSession(async ({ request }) => githubProfileSchema.parse(await request("user"))));
   ipcMain.handle("github:sign-in", async () => {
     const status = await auth.signIn();
     if (status.state === "authorizing" && !authOrigin) await shell.openExternal(status.verificationUri);

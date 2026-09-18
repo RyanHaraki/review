@@ -55,6 +55,7 @@ Keep the fixture environment variables set for this command. It restarts the own
 The server reloads its state file for each request. Change these fields between requests to test authorization outcomes:
 
 - `auth.outcome`: `approved`, `authorization_pending`, `access_denied`, `expired_token`, or `slow_down`.
+- `auth.name`, `auth.email`, and `auth.avatarUrl`: set profile values to check the sidebar account control. Null values exercise username and initials.
 - `auth.revoked`: set `true` to return 401 for API requests.
 - `auth.accountId` and `auth.login`: change both before the next sign-in to test account switching. Existing tokens cannot access the new account.
 

@@ -67,7 +67,7 @@ async function handle(request, response) {
   const authorization = request.headers.authorization;
   const accountId = state.auth.accountId;
   if (state.auth.revoked || authorization !== `Bearer fixture-token-${accountId}`) return json({ message: "Bad credentials" }, 401);
-  if (endpoint === "user" && method === "GET") return json({ id: accountId, login: state.auth.login, avatar_url: null });
+  if (endpoint === "user" && method === "GET") return json({ id: accountId, login: state.auth.login, avatar_url: state.auth.avatarUrl ?? null, name: state.auth.name ?? null, email: state.auth.email ?? null });
   const pathWithoutQuery = endpoint.split("?")[0];
   if (pathWithoutQuery === "user/installations" && method === "GET" && state.auth.installed === false) return json({ total_count: 0, installations: [] });
   if (pathWithoutQuery === "user/installations" && method === "GET") return json({ total_count: 1, installations: [{ id: 7, account: { id: accountId, login: state.auth.login } }] });
