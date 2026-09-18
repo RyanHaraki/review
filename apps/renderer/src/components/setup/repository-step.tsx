@@ -1,6 +1,7 @@
 import { Combobox } from "@base-ui/react/combobox";
 import type { GitHubRepositoryChoice } from "@review/contracts";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 
 type RepositoryStepProps = {
@@ -23,6 +24,9 @@ export function RepositoryStep({
   retry,
 }: RepositoryStepProps) {
   const anchor = useRef<HTMLDivElement>(null);
+  const installation = useMutation({ mutationFn: () => window.reviewDesktop.openGitHubInstallations() });
+  const { mutate } = installation;
+  const manageAccess = useCallback(() => mutate(), [mutate]);
   const complete = selected.length > 0;
   const icon = complete
     ? (
@@ -160,6 +164,16 @@ export function RepositoryStep({
             </Combobox.Portal>
           </Combobox.Root>
         )}
+      {githubConnected && (
+        <div className="ms-9 grid gap-2">
+          <p className="text-xs text-text-secondary">Missing a repository? Give Review access on GitHub, then refresh.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={manageAccess} disabled={installation.isPending}>Manage repository access</Button>
+            <Button size="sm" variant="outline" onClick={retry} disabled={loading}>Refresh repositories</Button>
+          </div>
+          {installation.error && <p role="alert" className="text-xs text-red-700">{installation.error.message}</p>}
+        </div>
+      )}
     </li>
   );
 }

@@ -12,7 +12,7 @@ import {
 } from "@review/contracts";
 import { z } from "zod";
 
-import { openReviewDatabase } from "./database/client.js";
+import { openAccountDatabases } from "./database/account-databases.js";
 import { createReviewServer } from "./server.js";
 
 const key: PullRequestKey = { repository: "openai/example", number: 7 };
@@ -36,18 +36,18 @@ const draft = {
 };
 
 async function startServer(directory: string) {
-  const reviewDatabase = openReviewDatabase(directory);
+  const reviewDatabase = openAccountDatabases(directory);
   const server = createReviewServer(reviewDatabase);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = z.object({ port: z.number().int().positive() }).parse(server.address());
   return {
     reviewDatabase,
     server,
-    origin: `http://127.0.0.1:${address.port}`,
+    origin: `http://127.0.0.1:${address.port}/accounts/42`,
   };
 }
 
-async function closeServer(server: ReturnType<typeof createReviewServer>, reviewDatabase: ReturnType<typeof openReviewDatabase>) {
+async function closeServer(server: ReturnType<typeof createReviewServer>, reviewDatabase: ReturnType<typeof openAccountDatabases>) {
   await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   reviewDatabase.close();
 }
@@ -127,6 +127,29 @@ test("keeps a failed draft submission available through the HTTP API", async () 
     const failed = pullRequestDraftSchema.parse(await finishedResponse.json());
     assert.equal(failed.status, "draft");
     assert.equal(failed.error, "GitHub rejected this comment.");
+  } finally {
+    await closeServer(server, reviewDatabase);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("keeps account data separate and rejects unscoped routes", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "review-accounts-http-"));
+  const { reviewDatabase, server, origin } = await startServer(directory);
+  try {
+    const saved = await fetch(`${origin}/pull-requests/details/drafts/save`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    assert.equal(saved.status, 200);
+    const other = origin.replace("/accounts/42", "/accounts/43");
+    const read = (base: string) => fetch(`${base}/pull-requests/details/drafts/read`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(key),
+    });
+    assert.deepEqual(await (await read(other)).json(), []);
+    assert.equal(z.array(pullRequestDraftSchema).parse(await (await read(origin)).json()).length, 1);
+    assert.equal((await fetch(`${origin.replace("/accounts/42", "")}/preferences`)).status, 404);
   } finally {
     await closeServer(server, reviewDatabase);
     rmSync(directory, { recursive: true, force: true });

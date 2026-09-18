@@ -71,7 +71,7 @@ Use macOS Computer Use through `node_repl` and `@oai/sky` only when CDP cannot e
 
 Stable handles include:
 
-- Setup: `Get started with Review`, `GitHub CLI`, `Codex`, `Repositories`, `Get started`, `Check again`, and `Connect Codex`.
+- Setup: `Get started with Review`, `GitHub`, `Sign in with GitHub`, `Codex`, `Repositories`, `Get started`, `Check again`, and `Connect Codex`.
 - Pull requests: `Pull requests`, `Filter pull requests by repository`, `Filter pull requests by status`, `Refresh`, pull-request buttons containing the title and repository, and `Open in GitHub`.
 
 Exercise the user path. For the pull-request proof, wait for the list to load, click a pull-request button, and confirm the detail pane shows the same title, repository, author, review state, and change counts. For setup, confirm all three steps before using `Get started`; do not call IPC methods directly.
@@ -80,9 +80,15 @@ Exercise the user path. For the pull-request proof, wait for the list to load, c
 
 Store proof files in `.agents/skills/verify-review/evidence/`. Capture the accessibility tree or terminal transcript before the action, the action itself, and the resulting state. Screenshots may support the transcript, but a final screenshot alone is not proof.
 
-Verify side effects with the local service. After changing preferences in the UI, read `GET http://127.0.0.1:4319/preferences` and confirm the selected repositories, statuses, and `setupComplete` value. For pull-request loading, confirm the visible title and detail values against the UI result. Do not use internal setters or test-only endpoints.
+Verify side effects with the local service. After changing preferences in the UI, read `GET <isolated-server-origin>/accounts/<signed-in-account-id>/preferences` and confirm the selected repositories, statuses, and `setupComplete` value. For pull-request loading, confirm the visible title and detail values against the UI result. Do not use internal setters or test-only endpoints.
+
+For isolated GitHub authorization and PR checks, use the HTTP and Codex fixtures in [fixtures/README.md](fixtures/README.md).
 
 GitHub and Codex are external boundaries. Use the authenticated local sessions only when the run needs them. Do not submit sign-in forms or transmit credentials during verification.
+
+## Restart the isolated app
+
+Use `control-review.mjs health restart --run-id <id>` to restart only the owned Electron process. It preserves that run's profile and local server, then records the new process ID and CDP port. Supply the same fixture environment as the first launch. This permits a saved-credential check without a new database or profile.
 
 ## Cleanup
 

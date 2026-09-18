@@ -323,3 +323,27 @@ test("successful overview remains available when cache write fails", async () =>
     "original",
   );
 });
+
+test("identical draft IDs in separate sessions do not share an active submission", async () => {
+  const firstStore = storage(newDraft());
+  const secondStore = storage({ ...newDraft(), body: "Second account draft." });
+  const gate = Promise.withResolvers<void>();
+  const firstGitHub: GitHubRequest = async (path) => {
+    if (path === "graphql") { await gate.promise; return detail(); }
+    return { html_url: "https://github.com/example/repo/pull/7#first" };
+  };
+  const secondGitHub: GitHubRequest = async (path, body) => {
+    if (path === "graphql") return detail();
+    assert.equal(body?.body, `Second account draft.\n<!-- review-draft:${id} -->`);
+    return { html_url: "https://github.com/example/repo/pull/7#second" };
+  };
+  const first = submitDraft(reference, firstGitHub, firstStore.local);
+  try {
+    const second = submitDraft(reference, secondGitHub, secondStore.local);
+    assert.notEqual(first, second);
+    assert.equal((await second).remoteUrl, "https://github.com/example/repo/pull/7#second");
+  } finally {
+    gate.resolve();
+    await first;
+  }
+});

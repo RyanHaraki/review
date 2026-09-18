@@ -68,10 +68,8 @@ export type LocalServerHealth = {
 
 export type SetupConnectionState = "connected" | "disconnected" | "unavailable";
 
-export type GitHubSetupStatus = {
-  state: SetupConnectionState;
-  login: string | null;
-};
+import type { GitHubSetupStatus } from "./github-session.js";
+export * from "./github-session.js";
 
 export type CodexSetupAccount =
   | {
@@ -164,6 +162,12 @@ export type DesktopBridge = PullRequestDetailsBridge & {
   getPlatform(): string;
   getSetupStatus(): Promise<SetupStatus>;
   connectCodex(): Promise<void>;
+  readGitHubSession(): Promise<GitHubSetupStatus>;
+  signInGitHub(): Promise<GitHubSetupStatus>;
+  cancelGitHubSignIn(): Promise<void>;
+  signOutGitHub(): Promise<void>;
+  openGitHubInstallations(): Promise<void>;
+  onGitHubSessionChanged(listener: (status: GitHubSetupStatus) => void): () => void;
   readPreferences(): Promise<ReviewPreferences>;
   savePreferences(preferences: ReviewPreferences): Promise<void>;
   listGitHubRepositories(): Promise<GitHubRepositoryChoice[]>;

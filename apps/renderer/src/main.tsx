@@ -1,12 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { IconContext } from "@phosphor-icons/react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider } from "@tanstack/react-router";
 
-import { queryClient } from "./query/query-client";
+import { SessionApplication } from "./session/session-application";
+import { githubSession } from "./session/github-session-store";
 import { configureQueryFocusManager } from "./query/query-focus-manager";
-import { router } from "./router";
 import { TooltipProvider } from "./components/ui/tooltip";
 import "./index.css";
 
@@ -15,6 +13,7 @@ if (import.meta.env.DEV) {
 }
 
 configureQueryFocusManager();
+void githubSession.initialize();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -31,11 +30,9 @@ createRoot(rootElement).render(
         mirrored: false,
       }}
     >
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <RouterProvider router={router} />
-        </TooltipProvider>
-      </QueryClientProvider>
+      <TooltipProvider>
+        <SessionApplication />
+      </TooltipProvider>
     </IconContext.Provider>
   </StrictMode>,
 );

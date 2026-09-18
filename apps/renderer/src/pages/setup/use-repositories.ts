@@ -1,26 +1,9 @@
-import type { GitHubRepositoryChoice } from "@review/contracts";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export function useRepositories(enabled: boolean) {
-  const [choices, setChoices] = useState<GitHubRepositoryChoice[]>([]);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState(false);
-  const refresh = async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      setChoices(await window.reviewDesktop.listGitHubRepositories());
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (enabled) {
-      void refresh();
-    }
-  }, [enabled]);
-  return { choices, loading, error, refresh };
+  const query = useQuery({ queryKey: ["github-repositories"], queryFn: () => window.reviewDesktop.listGitHubRepositories(), enabled });
+  const { refetch } = query;
+  const refresh = useCallback(async () => { await refetch(); }, [refetch]);
+  return { choices: query.data ?? [], loading: enabled && query.isFetching, error: query.isError, refresh };
 }

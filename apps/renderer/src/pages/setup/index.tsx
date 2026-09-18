@@ -2,24 +2,14 @@ import type { GitHubRepositoryChoice } from "@review/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
-import { CodexStep, GitHubStep } from "../../components/setup/connection-steps";
+import { CodexStep } from "../../components/setup/codex-step";
+import { GitHubStep } from "../../components/setup/github-step";
+import { SetupProgress } from "../../components/setup/setup-progress";
 import { RepositoryStep } from "../../components/setup/repository-step";
 import { Button } from "../../components/ui/button";
 import { useUserPreferences } from "../../hooks/use-user-preferences";
 import { useRepositories } from "./use-repositories";
 import { useSetupStatus } from "./use-setup-status";
-
-function SetupProgress({ completedSteps }: { completedSteps: number }) {
-  const className = completedSteps === 3
-    ? "size-3.5 rounded-full [--setup-progress:100%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]"
-    : completedSteps === 2
-      ? "size-3.5 rounded-full [--setup-progress:66.667%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]"
-      : completedSteps === 1
-        ? "size-3.5 rounded-full [--setup-progress:33.333%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]"
-        : "size-3.5 rounded-full [--setup-progress:0%] [background:conic-gradient(var(--color-status-complete)_var(--setup-progress),rgb(0_0_0_/_0.12)_0)] [mask:radial-gradient(circle,transparent_44%,black_47%)]";
-
-  return <span aria-hidden="true" className={className} />;
-}
 
 export function SetupPage() {
   const [savingPreferences, setSavingPreferences] = useState(false);
@@ -112,11 +102,7 @@ export function SetupPage() {
             </div>
           </div>
           <ol className="relative z-10 mt-2.5 grid gap-0.5">
-            <GitHubStep
-              status={setup?.github ?? null}
-              checking={checking}
-              refresh={refresh}
-            />
+            <GitHubStep />
             <CodexStep
               status={setup?.codex ?? null}
               checking={checking}

@@ -148,18 +148,24 @@ function lineCommentPayload(anchor: LineAnchor, body: string) {
   }
   return payload;
 }
-const activeSubmissions = new Map<string, Promise<PullRequestDraft>>();
+const sessionSubmissions = new WeakMap<GitHubRequest, Map<string, Promise<PullRequestDraft>>>();
 export function submitDraft(
   reference: DraftReference,
   github: GitHubRequest,
   local: LocalRequest,
 ): Promise<PullRequestDraft> {
-  const active = activeSubmissions.get(reference.id);
+  let activeSubmissions = sessionSubmissions.get(github);
+  if (!activeSubmissions) {
+    activeSubmissions = new Map();
+    sessionSubmissions.set(github, activeSubmissions);
+  }
+  const submissions = activeSubmissions;
+  const active = submissions.get(reference.id);
   if (active) return active;
   const submission = performSubmission(reference, github, local).finally(() => {
-    activeSubmissions.delete(reference.id);
+    submissions.delete(reference.id);
   });
-  activeSubmissions.set(reference.id, submission);
+  submissions.set(reference.id, submission);
   return submission;
 }
 async function recoverSubmission(

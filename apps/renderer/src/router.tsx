@@ -5,13 +5,17 @@ import { Route as IndexRoute } from "./routes/index";
 import { Route as RootRoute } from "./routes/root";
 import { Route as SetupRoute } from "./routes/setup";
 
-export const router = createRouter({
-  routeTree: RootRoute.addChildren([IndexRoute, SetupRoute]),
+const routeTree = RootRoute.addChildren([IndexRoute, SetupRoute]);
+
+export function createAppRouter() {
+  return createRouter({
+  routeTree,
   history: createHashHistory(),
-});
+  });
+}
 
 declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router;
+    router: ReturnType<typeof createAppRouter>;
   }
 }
