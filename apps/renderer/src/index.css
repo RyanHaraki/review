@@ -24,6 +24,9 @@
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
@@ -55,4 +58,59 @@
 @media (max-width: 900px) {
   .diff-review-layout-open { grid-template-columns: minmax(0, 1fr); }
   .diff-comments-sidebar { position: fixed; top: 3rem; right: 0; bottom: 0; z-index: 30; width: min(22rem, 90vw); height: auto; padding: 1rem; background: var(--color-page); box-shadow: -4px 0 20px #0001; }
+}
+
+.review-guide {
+  container: review-guide / inline-size;
+}
+
+.guide-chapter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+@container review-guide (min-width: 64rem) {
+  .guide-chapter {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    gap: 2rem;
+  }
+}
+
+.guide-loader {
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 2px;
+}
+
+.guide-loader > span {
+  width: 4px;
+  height: 4px;
+  border-radius: 0.5px;
+  background: currentColor;
+  animation: guide-pixel 1.25s ease-in-out infinite;
+}
+
+.guide-loading-label {
+  animation: guide-label 2s ease-in-out infinite;
+}
+
+.guide-reveal {
+  animation: guide-appear 360ms ease-out both;
+}
+
+@keyframes guide-pixel {
+  0%, 100% { opacity: 0.15; }
+  45% { opacity: 0.9; }
+}
+
+@keyframes guide-label {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
+@keyframes guide-appear {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }

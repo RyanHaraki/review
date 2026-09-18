@@ -4,6 +4,8 @@ import { contextBridge, ipcRenderer } from "electron";
 const desktopBridge: DesktopBridge = {
   readReviewedFiles: (input) => ipcRenderer.invoke("pull-requests:reviewed-read", input),
   setFileReviewed: (input) => ipcRenderer.invoke("pull-requests:reviewed-write", input),
+  readReviewGuide: (key) => ipcRenderer.invoke("review-guide:read", key),
+  generateReviewGuide: (key) => ipcRenderer.invoke("review-guide:generate", key),
   getElectronVersion: () => process.versions.electron,
   getPlatform: () => process.platform,
   getSetupStatus: () => ipcRenderer.invoke("setup:read"),

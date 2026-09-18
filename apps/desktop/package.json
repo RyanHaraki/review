@@ -9,7 +9,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc --ignoreConfig --types node --target es2023 --module nodenext --moduleResolution nodenext --esModuleInterop --skipLibCheck --outDir out/tests src/main/pull-request-submissions.test.ts && node --test out/tests/pull-request-submissions.test.js"
+    "test": "tsx --test src/main/*.test.ts"
   },
   "dependencies": {
     "@review/codex-app-server": "workspace:*",
@@ -17,6 +17,7 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "tsx": "4.23.13",
     "@tailwindcss/vite": "4.3.3",
     "@vitejs/plugin-react": "5.2.0",
     "electron": "44.1.1",

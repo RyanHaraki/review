@@ -18,12 +18,14 @@ import type {
 } from "@review/contracts";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { z } from "zod";
+import { createReviewGuides } from "./review-guide.js";
 
 const execFileAsync = promisify(execFile);
 const codexClient = new CodexAppServerClient();
 let repositoryChoicesPromise: Promise<GitHubRepositoryChoice[]> | null = null;
 const localServerOrigin = process.env.REVIEW_SERVER_ORIGIN ?? "http://127.0.0.1:4319";
 registerPullRequestDetails(localServerOrigin);
+const reviewGuides = createReviewGuides(localServerOrigin, codexClient);
 const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const repositoryListSchema = z.array(z.string().regex(repositoryPattern)).max(50);
 const githubPullRequestSchema = z.object({
@@ -346,6 +348,8 @@ async function readSetupStatus(): Promise<SetupStatus> {
 }
 
 ipcMain.handle("setup:read", readSetupStatus);
+ipcMain.handle("review-guide:read", (_event, key) => reviewGuides.read(key));
+ipcMain.handle("review-guide:generate", (_event, key) => reviewGuides.ensure(key));
 ipcMain.handle("setup:list-github-repositories", listGitHubRepositories);
 ipcMain.handle("preferences:read", readPreferences);
 ipcMain.handle("preferences:save", (_event, preferences: ReviewPreferences) =>

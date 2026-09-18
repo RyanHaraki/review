@@ -66,6 +66,27 @@ type PendingRequest = {
   timeout: ReturnType<typeof setTimeout>;
 };
 
+type PendingGeneration = {
+  text: string;
+  resolve(text: string): void;
+  reject(error: Error): void;
+  timeout: ReturnType<typeof setTimeout>;
+};
+
+const notificationSchema = z.object({
+  method: z.string(),
+  params: z.object({ threadId: z.string() }).passthrough(),
+});
+const completedItemSchema = z.object({
+  item: z.object({ type: z.literal("agentMessage"), text: z.string(), phase: z.string().nullish() }),
+});
+const completedTurnSchema = z.object({
+  turn: z.object({
+    status: z.enum(["completed", "failed", "interrupted"]),
+    error: z.object({ message: z.string() }).nullish(),
+  }),
+});
+
 export type CodexAccount = z.infer<typeof accountSchema>;
 
 export type CodexAccountStatus = {
@@ -84,20 +105,24 @@ export class CodexAppServerClient {
   private lines: ReadlineInterface | null = null;
   private nextRequestId = 1;
   private readonly pendingRequests = new Map<number, PendingRequest>();
+  private readonly pendingGenerations = new Map<string, PendingGeneration>();
 
   async start(): Promise<void> {
-    if (this.process) {
+    if (this.startPromise) {
+      await this.startPromise;
       return;
     }
 
-    if (this.startPromise) {
-      await this.startPromise;
+    if (this.process) {
       return;
     }
 
     this.startPromise = this.startProcess();
     try {
       await this.startPromise;
+    } catch (error) {
+      this.stop();
+      throw error;
     } finally {
       this.startPromise = null;
     }
@@ -117,7 +142,9 @@ export class CodexAppServerClient {
     this.lines = createInterface({ input: process.stdout });
     this.lines.on("line", (line) => this.handleLine(line));
     process.stderr.resume();
-    process.once("exit", () => this.handleExit());
+    process.once("exit", () => {
+      if (this.process === process) this.handleExit();
+    });
 
     await this.request("initialize", {
       clientInfo: {
@@ -155,6 +182,60 @@ export class CodexAppServerClient {
     };
   }
 
+  async generateStructuredText(input: {
+    cwd: string;
+    instructions: string;
+    prompt: string;
+    outputSchema: JsonValue;
+  }): Promise<string> {
+    await this.start();
+    const models = z.object({
+      data: z.array(z.object({ model: z.string(), isDefault: z.boolean() })),
+    }).parse(await this.request("model/list", { includeHidden: false }));
+    const model = models.data.find((candidate) => candidate.isDefault) ?? models.data[0];
+    if (!model) throw new Error("Codex has no available model for guide generation.");
+    const result = await this.request("thread/start", {
+      model: model.model,
+      cwd: input.cwd,
+      ephemeral: true,
+      approvalPolicy: "never",
+      sandbox: "read-only",
+      baseInstructions: input.instructions,
+      config: {
+        "features.shell_tool": false,
+        "features.unified_exec": false,
+        "features.apply_patch_freeform": false,
+        web_search: "disabled",
+      },
+    });
+    const { thread } = z.object({ thread: z.object({ id: z.string() }) }).parse(result);
+    const completion = Promise.withResolvers<string>();
+    let turnId: string | null = null;
+    const timeout = setTimeout(() => {
+      if (turnId) {
+        void this.request("turn/interrupt", { threadId: thread.id, turnId }).catch(() => undefined);
+      }
+      completion.reject(new Error("Guide generation timed out. Try again."));
+    }, 300_000);
+    this.pendingGenerations.set(thread.id, { ...completion, text: "", timeout });
+    // Register completion before starting the turn because notifications can arrive first.
+    const started = this.request("turn/start", {
+      threadId: thread.id,
+      input: [{ type: "text", text: input.prompt }],
+      outputSchema: input.outputSchema,
+    }).then((response) => {
+      turnId = z.object({ turn: z.object({ id: z.string() }) }).parse(response).turn.id;
+    });
+    try {
+      const [, text] = await Promise.all([started, completion.promise]);
+      return text;
+    } finally {
+      clearTimeout(timeout);
+      this.pendingGenerations.delete(thread.id);
+      void this.request("thread/unsubscribe", { threadId: thread.id }).catch(() => undefined);
+    }
+  }
+
   stop(): void {
     this.lines?.close();
     this.lines = null;
@@ -188,7 +269,38 @@ export class CodexAppServerClient {
   }
 
   private handleLine(line: string): void {
-    const parsed = jsonRpcResponseSchema.safeParse(JSON.parse(line));
+    let value: unknown;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      return;
+    }
+    const notification = notificationSchema.safeParse(value);
+    if (notification.success) {
+      const { method, params } = notification.data;
+      const generation = this.pendingGenerations.get(params.threadId);
+      if (!generation) {
+        return;
+      }
+      if (method === "item/completed") {
+        const item = completedItemSchema.safeParse(params);
+        if (item.success && item.data.item.phase !== "commentary") {
+          generation.text = item.data.item.text;
+        }
+      }
+      if (method === "turn/completed") {
+        const turn = completedTurnSchema.safeParse(params);
+        if (turn.success) {
+          if (turn.data.turn.status === "completed" && generation.text) {
+            generation.resolve(generation.text);
+          } else {
+            generation.reject(new Error(turn.data.turn.error?.message ?? "Codex did not finish the guide. Try again."));
+          }
+        }
+      }
+      return;
+    }
+    const parsed = jsonRpcResponseSchema.safeParse(value);
     if (!parsed.success) {
       return;
     }
@@ -222,6 +334,11 @@ export class CodexAppServerClient {
   }
 
   private rejectPendingRequests(error: Error): void {
+    for (const generation of this.pendingGenerations.values()) {
+      clearTimeout(generation.timeout);
+      generation.reject(error);
+    }
+    this.pendingGenerations.clear();
     for (const pending of this.pendingRequests.values()) {
       clearTimeout(pending.timeout);
       pending.reject(error);
