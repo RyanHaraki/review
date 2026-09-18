@@ -86,11 +86,10 @@ try {
   record("encrypted session survives app process restart without new authorization", true);
 
   await page.getByRole("button", { name: /^Account menu for / }).click();
-  await page.getByRole("menuitem", { name: "Account", exact: true }).click();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Log out", exact: true }).click();
   await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).waitFor();
   await assert.rejects(readFile(encryptedPath), error => error.code === "ENOENT");
-  record("sign-out removes saved credentials", true);
+  record("sidebar Log out returns to sign-in and removes saved credentials", true);
 
   await configure({ accountId: 84, login: "fixture-alternate" });
   await signIn("fixture-alternate");

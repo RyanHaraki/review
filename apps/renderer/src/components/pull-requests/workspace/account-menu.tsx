@@ -1,12 +1,17 @@
 import { Menu } from "@base-ui/react/menu";
-import { CaretUpDownIcon, UserCircleIcon } from "@phosphor-icons/react";
+import { CaretUpDownIcon, SignOutIcon, UserCircleIcon } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useCallback } from "react";
 import { useGitHubProfile } from "../../../session/use-github-profile";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { DropdownMenu, DropdownMenuContent } from "../../ui/dropdown-menu";
 
 export function AccountMenu() {
   const { account, profile } = useGitHubProfile();
+  const logout = useMutation({ mutationFn: () => window.reviewDesktop.signOutGitHub() });
+  const { mutate } = logout;
+  const logOut = useCallback(() => mutate(), [mutate]);
   if (!account) return null;
   const name = profile?.name || account.login;
   const detail = profile?.email || `@${account.login}`;
@@ -36,6 +41,16 @@ export function AccountMenu() {
           <UserCircleIcon aria-hidden="true" className="size-4" />
           Account
         </Menu.Item>
+        <Menu.Item
+          onClick={logOut}
+          closeOnClick={false}
+          disabled={logout.isPending}
+          className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm outline-none data-highlighted:bg-surface-hover data-disabled:pointer-events-none data-disabled:opacity-50"
+        >
+          <SignOutIcon aria-hidden="true" className="size-4" />
+          {logout.isPending ? "Logging out…" : "Log out"}
+        </Menu.Item>
+        {logout.error && <p role="alert" className="px-2.5 py-2 text-xs text-red-700">{logout.error.message}</p>}
       </DropdownMenuContent>
     </DropdownMenu>
   );
