@@ -29,7 +29,7 @@ export function PullRequestOverview({ pullRequestKey }: { pullRequestKey: PullRe
   const { descriptionDraft, discussionDrafts } = visibleDrafts(drafts.data, composing ? activeDraftId : null);
   if (overview.isPending) return <p className="py-8 text-sm text-text-secondary">Loading pull request…</p>;
   if (!overview.data) return <div className="space-y-3 py-8"><p role="alert" className="text-sm text-red-700">{overview.error?.message ?? "Could not load the pull request."}</p><Button onClick={refresh} size="sm" variant="outline">Retry</Button></div>;
-  return <div className="mx-auto max-w-5xl space-y-10 py-5">
+  return <div className="mx-auto max-w-3xl space-y-10 py-5 [&_.pr-markdown]:text-base [&_.pr-markdown]:leading-7 [&_textarea]:text-base [&_textarea]:leading-7">
     {overview.isError && <p role="alert" className="text-sm text-red-700">Could not refresh this pull request. The last saved data is shown.</p>}
     {drafts.isError && <p role="alert" className="text-sm text-red-700">Could not load saved drafts. <Button variant="text" onClick={refresh}>Retry</Button></p>}
     <PullRequestDescription pullRequestKey={pullRequestKey} overview={overview.data} draft={descriptionDraft} editing={editing} loadingDrafts={drafts.isPending} onEdit={startEdit} onClose={stopEdit} />
