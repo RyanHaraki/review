@@ -60,6 +60,24 @@
   .diff-comments-sidebar { position: fixed; top: 3rem; right: 0; bottom: 0; z-index: 30; width: min(22rem, 90vw); height: auto; padding: 1rem; background: var(--color-page); box-shadow: -4px 0 20px #0001; }
 }
 
+.review-guide {
+  container: review-guide / inline-size;
+}
+
+.guide-chapter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+@container review-guide (min-width: 64rem) {
+  .guide-chapter {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    gap: 2rem;
+  }
+}
+
 .guide-loader {
   display: grid;
   grid-template-columns: repeat(3, 4px);

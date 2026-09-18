@@ -36,7 +36,7 @@ export function ReviewGuideContent({ guide, reveal }: { guide: ReviewGuide; reve
   if (chapters.length === 0) return <p className="py-12 text-sm text-text-secondary">This pull request has no changed files.</p>;
   const visible = animate ? visibleCount : totalBlocks;
   return (
-    <div className="space-y-12 pb-12 pt-5" aria-label="Review guide" aria-busy={visible < totalBlocks}>
+    <div className="review-guide space-y-12 pb-12 pt-5" aria-label="Review guide" aria-busy={visible < totalBlocks}>
       {chapters.map(({ chapter, generated, start }, index) => visible > start && (
         <GuideChapter
           chapter={chapter}

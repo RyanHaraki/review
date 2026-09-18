@@ -13,7 +13,7 @@ export function GuideChapter({ chapter, files, index, total, generated = false, 
 }) {
   return (
     <section className="guide-chapter">
-      <div className={reveal ? "mb-5 guide-reveal" : "mb-5"}>
+      <div className={reveal ? "min-w-0 break-words guide-reveal" : "min-w-0 break-words"}>
         <p className="mb-2 text-xs tabular-nums text-text-tertiary">{String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}</p>
         <h3 className="text-xl font-semibold tracking-[-0.02em]">{chapter.title}</h3>
         <p className="mt-4 max-w-[76ch] whitespace-pre-line text-[15px] leading-7 text-text-secondary">
@@ -22,7 +22,7 @@ export function GuideChapter({ chapter, files, index, total, generated = false, 
             : part)}
         </p>
       </div>
-      <div className="space-y-3">
+      <div className="min-w-0 space-y-3">
         {chapter.filePaths.slice(0, visibleFiles).map((path) => {
           const file = files.get(path);
           return file ? (
